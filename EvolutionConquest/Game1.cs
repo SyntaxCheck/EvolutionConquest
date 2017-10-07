@@ -226,11 +226,14 @@ namespace EvolutionConquest
 
             Control.FromHandle(Window.Handle).Controls.Add(_chart);
 
-            _dbConnectionSettings = SettingsHelper.ReadSettings("Settings.json");
+            if (_writeStats)
+            {
+                _dbConnectionSettings = SettingsHelper.ReadSettings("Settings.json");
 
-            //Establish a connection to the SQL Server database, we do not want to run a whole simulation only to find out the SQL Server database is not accessible
-            SqlConnection tmpConnection = _connectionManager.GetSqlConnection(_dbConnectionSettings);
-            tmpConnection.Close(); //Close the connection right away so that our connection does not timeout while the simulation/game runs
+                //Establish a connection to the SQL Server database, we do not want to run a whole simulation only to find out the SQL Server database is not accessible
+                SqlConnection tmpConnection = _connectionManager.GetSqlConnection(_dbConnectionSettings);
+                tmpConnection.Close(); //Close the connection right away so that our connection does not timeout while the simulation/game runs
+            }
         }
         protected override void UnloadContent()
         {
@@ -459,6 +462,8 @@ namespace EvolutionConquest
                         }
                     }
                 }
+
+                UpdateMoveCreature(gameTime, i);
             }
         }
         private void UpdateTickFood(GameTime gameTime)
@@ -544,8 +549,8 @@ namespace EvolutionConquest
             //Border Collision Detection
             for (int i = 0; i < _gameData.Creatures.Count; i++)
             {
-                if (!_gameData.Creatures[i].IsLeavingClimate)
-                {
+                //if (!_gameData.Creatures[i].IsLeavingClimate)
+                //{
                     if (_gameData.Creatures[i].Position.X - (_gameData.Creatures[i].Texture.Width / 2) <= 0 || _gameData.Creatures[i].Position.X + (_gameData.Creatures[i].Texture.Width / 2) >= Global.WORLD_SIZE)
                     {
                         if (_gameData.Creatures[i].Direction.X >= 0 && _gameData.Creatures[i].Direction.Y >= 0 ||
@@ -566,7 +571,7 @@ namespace EvolutionConquest
                             _gameData.Creatures[i].Rotation = (((float)Math.PI) - _gameData.Creatures[i].Rotation);
                         }
                     }
-                }
+                //}
 
                 //Food collision
                 if (_gameData.Creatures[i].IsHerbavore)
@@ -591,22 +596,7 @@ namespace EvolutionConquest
                     }
                 }
 
-                if (_gameData.Creatures[i].IsAlive)
-                {
-                    //Move the creature
-                    _gameData.Creatures[i].Position += _gameData.Creatures[i].Direction * ((_gameData.Creatures[i].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                    _gameData.Creatures[i].GridPositions = GetGridPositionsForSpriteBase(_gameData.Creatures[i]);
-                    _gameData.Creatures[i].Energy -= _gameData.Creatures[i].Speed * MOVEMENT_ENERGY_DEPLETION;
-
-                    if (_gameData.Creatures[i].CurrentGridPositionsForCompare != _gameData.Creatures[i].OldGridPositionsForCompare)
-                    {
-                        List<Point> delta = _gameData.Creatures[i].GetGridDelta();
-                        if (delta.Count > 0)
-                        {
-                            _gameData.RemoveCreatureFromGrid(_gameData.Creatures[i], delta);
-                        }
-                    }
-                }
+                UpdateMoveCreature(gameTime, i);
             }
         }
         private void UpdateOffTickSpawnFood(GameTime gameTime)
@@ -667,6 +657,25 @@ namespace EvolutionConquest
                 #pragma warning disable CS0162 // Unreachable code detected
                 _resetTimeSpan = gameTime.TotalGameTime;
                 #pragma warning restore CS0162 // Unreachable code detected
+            }
+        }
+        private void UpdateMoveCreature(GameTime gameTime, int creatureIndex)
+        {
+            if (_gameData.Creatures[creatureIndex].IsAlive)
+            {
+                //Move the creature
+                _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * ((_gameData.Creatures[creatureIndex].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _gameData.Creatures[creatureIndex].GridPositions = GetGridPositionsForSpriteBase(_gameData.Creatures[creatureIndex]);
+                _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].Speed * MOVEMENT_ENERGY_DEPLETION;
+
+                if (_gameData.Creatures[creatureIndex].CurrentGridPositionsForCompare != _gameData.Creatures[creatureIndex].OldGridPositionsForCompare)
+                {
+                    List<Point> delta = _gameData.Creatures[creatureIndex].GetGridDelta();
+                    if (delta.Count > 0)
+                    {
+                        _gameData.RemoveCreatureFromGrid(_gameData.Creatures[creatureIndex], delta);
+                    }
+                }
             }
         }
 

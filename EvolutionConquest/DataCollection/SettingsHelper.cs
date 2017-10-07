@@ -15,8 +15,14 @@ public class SettingsHelper
     public static DatabaseConnectionSettings ReadSettings(string path)
     {
         DatabaseConnectionSettings settings;
-        string json = File.ReadAllText(path);
+        string json = String.Empty;
 
+        if (!File.Exists(path))
+        {
+            WriteSettings(path, new DatabaseConnectionSettings() { DatabaseName = "Test", ServerName = "Server", UserName = "UsrName_Here", Password = "SecurePasswordHere" });
+        }
+
+        json = File.ReadAllText(path);
         settings = new JavaScriptSerializer().Deserialize<DatabaseConnectionSettings>(json);
 
         return settings;
