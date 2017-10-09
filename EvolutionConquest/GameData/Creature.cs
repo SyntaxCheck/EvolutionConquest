@@ -148,8 +148,8 @@ public class Creature : SpriteBase
     //public const float EGG_INCUBATION_INIT_MAX = 600;
     //public const float FOOD_DIGESTION_INIT_MIN = 100;
     //public const float FOOD_DIGESTION_INIT_MAX = 100;
-    //public const float SPEED_INIT_MIN = 30;
-    //public const float SPEED_INIT_MAX = 30;
+    //public const float SPEED_INIT_MIN = 15;
+    //public const float SPEED_INIT_MAX = 15;
     //public const float LIFESPAN_INIT_MIN = 1000;
     //public const float LIFESPAN_INIT_MAX = 1000;
     //public const float HERBAVORE_INIT_MIN = 1;

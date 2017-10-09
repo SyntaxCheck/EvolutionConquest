@@ -57,17 +57,17 @@ namespace EvolutionConquest
         private int _climateHeight;
         private bool _writeStats;
         //Constants
-        private const int SESSION_NUMBER = 14;
+        private const int SESSION_NUMBER = 16;
         private const float SPRITE_FONT_SCALE = 0.5f;
         private const float TICKS_PER_SECOND = 30;
         private const int BORDER_WIDTH = 10;
         private const int GRID_CELL_SIZE = 50; //Seems to be the sweet spot for a 5,000 x 5,000 map based on the texture sizes we have so far
         private const float INIT_FOOD_RATIO = 0.0005f;
-        private const float INIT_STARTING_CREATURE_RATIO = 0.0001f;
+        private const float INIT_STARTING_CREATURE_RATIO = 0.00005f;
         //private const float INIT_FOOD_RATIO = 0.01f; //Performance test value
         //private const float INIT_STARTING_CREATURE_RATIO = 0.0005f; //Performance test value
         private const float FOOD_GENERATION_INTERVAL_SECONDS = 0.01f;
-        private const int TICKS_TILL_FOOD_UPGRADE = 9000;
+        private const int TICKS_TILL_FOOD_UPGRADE = 4500;
         private const int FOOD_UPGRADE_AMOUNT = 1;
         private const int FOOD_UPGRADE_CHANCE_PERCENT = 20; //Between 0-100
         private const int MAX_FOOD_LEVEL = 50;
@@ -184,12 +184,18 @@ namespace EvolutionConquest
             Creature creature = new Creature();
             creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
             _speciesIdCounter++;
+            creature.Species = "Cheater";
+            creature.OriginalSpecies = "Cheater";
             creature.Texture = _basicCreatureTexture;
-            creature.Position = new Vector2(500, 388);
-            creature.Rotation = MathHelper.ToRadians(10);
+            creature.Position = new Vector2(500, 1200);
+            creature.Rotation = MathHelper.ToRadians(0);
             creature.ColdClimateTolerance = 6;
             creature.HotClimateTolerance = 0;
+            creature.Sight = 1;
             _gameData.Creatures.Add(creature);
+
+            Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
+            SpawnFood(foodPos, 1);
 
             Global.Camera.AdjustZoom(500);
             _gameData.Focus = creature;
@@ -390,7 +396,7 @@ namespace EvolutionConquest
                 if (ENABLE_SIGHT)
                 {
                     //Vision is calculated from the center of the creature, if they do not have vision greater than their texture size there is no point calculating for vision
-                    if (_gameData.Creatures[i].Sight > _gameData.Creatures[i].TextureCollideDistance)
+                    if (!_gameData.Creatures[i].IsLeavingClimate && _gameData.Creatures[i].Sight > 0)
                     {
                         bool foundFood = false;
                         Vector2 newDestination = Vector2.Zero;
@@ -448,6 +454,7 @@ namespace EvolutionConquest
                                     if (gridLocations[j].X == p.X && gridLocations[j].Y == p.Y)
                                     {
                                         gridLocations.RemoveAt(j);
+                                        break;
                                     }
                                 }
                             }
@@ -459,6 +466,34 @@ namespace EvolutionConquest
                         if (foundFood)
                         {
                             //TODO Calculate the Intercept angle for the Food
+                            if (_gameData.Creatures[i].Position.X < newDestination.X && _gameData.Creatures[i].Position.Y < newDestination.Y)
+                            {
+                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
+                                double aTan = Math.Atan(inner);
+                                float degreesRotation = (float)(Math.PI - aTan);
+                                _gameData.Creatures[i].Rotation = degreesRotation;
+                            }
+                            else if (_gameData.Creatures[i].Position.X > newDestination.X && _gameData.Creatures[i].Position.Y < newDestination.Y)
+                            {
+                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
+                                double aTan = Math.Atan(inner);
+                                float degreesRotation = (float)(Math.PI + aTan);
+                                _gameData.Creatures[i].Rotation = degreesRotation;
+                            }
+                            else if (_gameData.Creatures[i].Position.X > newDestination.X && _gameData.Creatures[i].Position.Y > newDestination.Y)
+                            {
+                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
+                                double aTan = Math.Atan(inner);
+                                float degreesRotation = (float)((Math.PI * 2) - aTan);
+                                _gameData.Creatures[i].Rotation = degreesRotation;
+                            }
+                            else if (_gameData.Creatures[i].Position.X < newDestination.X && _gameData.Creatures[i].Position.Y > newDestination.Y)
+                            {
+                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
+                                double aTan = Math.Atan(inner);
+                                float degreesRotation = (float)(aTan);
+                                _gameData.Creatures[i].Rotation = degreesRotation;
+                            }
                         }
                     }
                 }
@@ -1086,11 +1121,14 @@ namespace EvolutionConquest
                     if (f.FoodStrength <= creature.Herbavore)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
-                        if (tmpDistance < distance)
+                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
                         {
-                            foundFood = true;
-                            closest = f.Position;
-                            distance = tmpDistance;
+                            if (tmpDistance < distance)
+                            {
+                                foundFood = true;
+                                closest = f.Position;
+                                distance = tmpDistance;
+                            }
                         }
                     }
                 }
