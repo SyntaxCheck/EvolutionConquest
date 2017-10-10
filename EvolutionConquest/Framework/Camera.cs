@@ -404,6 +404,51 @@ public class Camera
                 }
             }
         }
+        else if (inputState.IsNewKeyPress(Keys.H, controllingPlayer, out playerIndex)) //Focus on top Herbavore
+        {
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsHerbavore && t.Herbavore > t.Carnivore && t.Herbavore > t.Scavenger).ToList();
+            if (tmpList.Count > 0)
+            {
+                float highestHerbavore = tmpList.Max(t => t.Herbavore);
+                List<Creature> creatures = gameData.Creatures.Where(t => t.IsHerbavore && t.Herbavore == highestHerbavore).ToList();
+
+                if (creatures.Count > 0)
+                {
+                    gameData.Focus = creatures[creatures.Count - 1];
+                    gameData.SetIndexPositionsForCreatures();
+                }
+            }
+        }
+        else if (inputState.IsNewKeyPress(Keys.C, controllingPlayer, out playerIndex)) //Focus on top Herbavore
+        {
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsCarnivore && t.Carnivore > t.Herbavore && t.Carnivore > t.Scavenger).ToList();
+            if (tmpList.Count > 0)
+            {
+                float highestCarnivore = tmpList.Max(t => t.Carnivore);
+                List<Creature> creatures = gameData.Creatures.Where(t => t.IsCarnivore && t.Carnivore == highestCarnivore).ToList();
+
+                if (creatures.Count > 0)
+                {
+                    gameData.Focus = creatures[creatures.Count - 1];
+                    gameData.SetIndexPositionsForCreatures();
+                }
+            }
+        }
+        else if (inputState.IsNewKeyPress(Keys.V, controllingPlayer, out playerIndex)) //Focus on top Herbavore
+        {
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsScavenger && t.Scavenger > t.Carnivore && t.Scavenger > t.Herbavore).ToList();
+            if (tmpList.Count > 0)
+            {
+                float highestScavenger = tmpList.Max(t => t.Scavenger);
+                List<Creature> creatures = gameData.Creatures.Where(t => t.IsScavenger && t.Scavenger == highestScavenger).ToList();
+
+                if (creatures.Count > 0)
+                {
+                    gameData.Focus = creatures[creatures.Count - 1];
+                    gameData.SetIndexPositionsForCreatures();
+                }
+            }
+        }
 
         MouseState mouseState;
         if (inputState.IsNewLeftMouseClick(out mouseState))

@@ -15,15 +15,15 @@ namespace EvolutionConquest
         [STAThread]
         static void Main()
         {
-            try
-            {
-                using (var game = new Game1())
-                    game.Run();
-            }
-            catch (Exception ex)
-            {
-                File.WriteAllText("ErrorLog.log", "Message: " + ex.Message + Environment.NewLine + "Stack Strace: " + ex.StackTrace + Environment.NewLine);
-            }
+            //try
+            //{
+            using (var game = new Game1())
+                game.Run();
+            //}
+            //catch (Exception ex)
+            //{
+            //    File.WriteAllText("ErrorLog.log", "Message: " + ex.Message + Environment.NewLine + "Stack Strace: " + ex.StackTrace + Environment.NewLine);
+            //}
         }
     }
 #endif

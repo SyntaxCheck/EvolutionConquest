@@ -164,6 +164,10 @@ public class GameData
             }
         }
     }
+    public void AddDeadCreatureToList(Creature creature)
+    {
+        DeadCreatures.Add(creature);
+    }
     public void AddFoodToGrid(Food food)
     {
         foreach (Point p in food.GridPositions)
@@ -181,6 +185,13 @@ public class GameData
     public void AddCreatureToGrid(Creature creature)
     {
         foreach (Point p in creature.GridPositions)
+        {
+            MapGridData[p.X, p.Y].Creatures.Add(creature);
+        }
+    }
+    public void AddCreatureDeltaToGrid(Creature creature, List<Point> toBeAdded)
+    {
+        foreach (Point p in toBeAdded)
         {
             MapGridData[p.X, p.Y].Creatures.Add(creature);
         }

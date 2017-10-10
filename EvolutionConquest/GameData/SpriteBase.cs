@@ -52,8 +52,10 @@ public class SpriteBase
 
             if (Texture != null)
             {
-                _bounds.X = (int)(_position.X - (Texture.Width / 2));
-                _bounds.Y = (int)(_position.Y - (Texture.Height / 2));
+                //_bounds.X = (int)(_position.X - (Texture.Width / 2));
+                //_bounds.Y = (int)(_position.Y - (Texture.Height / 2));
+                _bounds.X = (int)Math.Round((_position.X - (Texture.Width / 2)), 0);
+                _bounds.Y = (int)Math.Round((_position.Y - (Texture.Height / 2)), 0);
             }
             if (!IsInCold && _position.Y <= _BottomOfCold)
             {
@@ -63,7 +65,7 @@ public class SpriteBase
             {
                 IsInHot = true;
             }
-            else if(_position.Y > _BottomOfCold && _position.Y < _TopOfHot)
+            else if (_position.Y > _BottomOfCold && _position.Y < _TopOfHot)
             {
                 IsInCold = false;
                 IsInHot = false;
@@ -74,7 +76,7 @@ public class SpriteBase
     public bool IsInHot { get; set; }
     public Vector2 Origin { get; set; }
     public Rectangle Bounds
-    { 
+    {
         get
         {
             return _bounds;
@@ -84,7 +86,7 @@ public class SpriteBase
             _bounds = value;
         }
     }
-    public int TextureCollideDistance { get; set; } 
+    public int TextureCollideDistance { get; set; }
     public List<Point> GridPositions
     {
         get
@@ -108,6 +110,8 @@ public class SpriteBase
         OldGridPositions = new List<Point>();
         _BottomOfCold = (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
         _TopOfHot = Global.WORLD_SIZE - (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+        CurrentGridPositionsForCompare = String.Empty;
+        OldGridPositionsForCompare = String.Empty;
     }
 
     public void CalculateBounds()
@@ -147,11 +151,6 @@ public class SpriteBase
 
         return pos;
     }
-    public void SetOldGridPos(string s)
-    {
-        OldGridPositionsForCompare = CurrentGridPositionsForCompare;
-        CurrentGridPositionsForCompare = s;
-    }
     public List<Point> GetGridDelta()
     {
         List<Point> delta = new List<Point>();
@@ -176,5 +175,84 @@ public class SpriteBase
         }
 
         return delta;
+    }
+    public List<Point> GetGridDeltaAdd()
+    {
+        List<Point> delta = new List<Point>();
+
+        foreach (Point p in OldGridPositions)
+        {
+            bool found = false;
+
+            foreach (Point o in GridPositions)
+            {
+                if (p.X == o.X && p.Y == o.Y)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                delta.Add(p);
+            }
+        }
+
+        return delta;
+    }
+    public void GetGridPositionsForSpriteBase(int gridCellSize, GameData _gameData)
+    {
+        List<Point> gridPositions = new List<Point>();
+
+        //Find the exact grid position we are in then check the surrounding grid locations
+        Point exactGridPos = CalculateGridPosition(gridCellSize);
+        gridPositions.Add(exactGridPos);
+
+        if (exactGridPos.X > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y].CellRectangle))
+        {
+            gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y));
+            if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y - 1].CellRectangle))
+            {
+                gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y - 1));
+            }
+            else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y + 1].CellRectangle))
+            {
+                gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y + 1));
+            }
+        }
+        else if (exactGridPos.X < _gameData.MapGridData.GetLength(0) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y].CellRectangle))
+        {
+            gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y));
+            if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y - 1].CellRectangle))
+            {
+                gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y - 1));
+            }
+            else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y + 1].CellRectangle))
+            {
+                gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y + 1));
+            }
+        }
+
+        if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y - 1].CellRectangle))
+        {
+            gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y - 1));
+        }
+        else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y + 1].CellRectangle))
+        {
+            gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y + 1));
+        }
+
+        //Move the Current Grid position string to the Old
+        string gridPosition = String.Empty;
+        foreach (Point p in gridPositions)
+        {
+            gridPosition += p.X + "," + p.Y + " ";
+        }
+
+        OldGridPositionsForCompare = CurrentGridPositionsForCompare;
+        CurrentGridPositionsForCompare = gridPosition;
+
+        GridPositions = gridPositions;
     }
 }

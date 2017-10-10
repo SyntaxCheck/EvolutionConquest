@@ -78,7 +78,7 @@ public static class CollisionDetection
 
         return true;
     }
-    public static Vector2 CalculateMovingInterceptPoint(Vector2 predatorPosition, Vector2 predatorDirection, float predatorSpeed, Vector2 preyPosition, Vector2 preyDirection, float preySpeed)
+    public static Vector2 CalculateMovingInterceptPoint(Vector2 predatorPosition, Vector2 predatorDirection, float predatorSpeed, Vector2 preyPosition, Vector2 preyDirection, float preySpeed, ref float timeToImpact)
     {
         Vector2 totarget = preyPosition - predatorPosition;
         Vector2 predatorVelocity = predatorDirection * predatorSpeed;
@@ -105,8 +105,8 @@ public static class CollisionDetection
         }
 
         Vector2 aimSpot = preyPosition + preyVelocity * t;
-        //Vector2 bulletPath = aimSpot - predatorPosition;
-        //float timeToImpact = bulletPath.Length() / predatorSpeed;//speed must be in units per second
+        Vector2 bulletPath = aimSpot - predatorPosition;
+        timeToImpact = bulletPath.Length() / predatorSpeed;//speed must be in units per second
 
         return aimSpot;
     }

@@ -24,7 +24,7 @@ public class Player
         {
             gameData.ShowControls = !gameData.ShowControls;
         }
-        if (inputState.IsNewKeyPress(Keys.H, controllingPlayer, out playerIndex))
+        if (inputState.IsNewKeyPress(Keys.F, controllingPlayer, out playerIndex))
         {
             gameData.HighlightSpecies = !gameData.HighlightSpecies;
         }

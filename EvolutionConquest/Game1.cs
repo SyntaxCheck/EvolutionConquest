@@ -74,7 +74,10 @@ namespace EvolutionConquest
         private const float FOOD_ENERGY_AMOUNT = 100;
         private const float MOVEMENT_ENERGY_DEPLETION = 0.01f;
         private const float EGG_ENERGY_LOSS = 50;
+        private const int CARNIVORE_LEVEL_BUFFER = 5; //How many levels higher in the Carnivore propery the carnivore has to be in order to eat the creature. A level 15 carnivore can eat any carnivore with a Carnivore level below 10 (Assuming the constant was set to 5)
         //GamePlay feature toggles
+        private const bool ENABLE_DEBUG_DATA = true;
+        private const bool ENABLE_FOOD_UPGRADES = false;
         private const bool ENABLE_ENERGY_DEATH = true;
         private const bool ENABLE_SIGHT = true;
         private const bool ENABLE_CLIMATE = true;
@@ -179,20 +182,49 @@ namespace EvolutionConquest
             int startingCreatureAmount = (int)(((Global.WORLD_SIZE * Global.WORLD_SIZE) / ((_basicCreatureTexture.Width + _basicCreatureTexture.Height) / 2)) * INIT_STARTING_CREATURE_RATIO);
             for (int i = 0; i < startingCreatureAmount; i++)
             {
-                SpawnStartingCreature();
+                //SpawnStartingCreature();
             }
+
+            //Test creatures
             Creature creature = new Creature();
             creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
             creature.Texture = _basicCreatureTexture;
-            creature.Position = new Vector2(500, 1200);
-            creature.Rotation = MathHelper.ToRadians(0);
-            creature.ColdClimateTolerance = 6;
+            creature.Position = new Vector2(200, 100);
+            //creature.Position = new Vector2(20, 20);
+            creature.Rotation = MathHelper.ToRadians(220);
+            creature.ColdClimateTolerance = 10;
             creature.HotClimateTolerance = 0;
-            creature.Sight = 1;
+            creature.Sight = 15;
+            creature.Carnivore = 10;
+            creature.Speed = 10;
+            creature.IsHerbavore = false;
+            creature.IsCarnivore = true;
+            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            _gameData.AddCreatureToGrid(creature);
             _gameData.Creatures.Add(creature);
+
+            Creature creature2 = new Creature();
+            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            _speciesIdCounter++;
+            creature2.Species = "Cheater2";
+            creature2.OriginalSpecies = "Cheater2";
+            creature2.Texture = _basicCreatureTexture;
+            creature2.Position = new Vector2(10, 100);
+            //creature2.Position = new Vector2(25, 25);
+            creature2.Rotation = MathHelper.ToRadians(135);
+            creature2.ColdClimateTolerance = 10;
+            creature2.HotClimateTolerance = 0;
+            creature2.Sight = 0;
+            creature2.Speed = 10;
+            creature2.Herbavore = 1;
+            creature2.IsHerbavore = true;
+            creature2.IsCarnivore = false;
+            creature2.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            _gameData.AddCreatureToGrid(creature2);
+            _gameData.Creatures.Add(creature2);
 
             Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
             SpawnFood(foodPos, 1);
@@ -213,7 +245,10 @@ namespace EvolutionConquest
             _controlsListText.Add("[F10] Toggle Creature Statistics");
             _controlsListText.Add("[F11] Toggle Chart");
             _controlsListText.Add("[Left Click] Follow/Unfollow Creature");
-            _controlsListText.Add("[H] Highlight Species");
+            _controlsListText.Add("[F] Highlight Species");
+            _controlsListText.Add("[H] Focus Top Herbavore");
+            _controlsListText.Add("[C] Focus Top Carnivore");
+            _controlsListText.Add("[V] Focus Top Scavenger");
             _controlsListText.Add(" ");
             _controlsListText.Add("[F12] Toggle Control Menu");
 
@@ -364,7 +399,7 @@ namespace EvolutionConquest
                     {
                         _gameData.Creatures[i].DeathCause = "Age";
                     }
-                    _gameData.DeadCreatures.Add(_gameData.Creatures[i]);
+                    _gameData.AddDeadCreatureToList(_gameData.Creatures[i]);
                     
                     //Drop all food on the ground randomly around the area
                     for (int k = 0; k < _gameData.Creatures[i].UndigestedFood; k++)
@@ -387,7 +422,7 @@ namespace EvolutionConquest
                     Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData.Creatures, ref _creatureIdCtr);
                     //TODO handle this maybe in the Creature class
                     egg.Texture = _eggTexture;
-                    egg.GridPositions = GetGridPositionsForSpriteBase(egg);
+                    egg.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
                     _gameData.AddEggToGrid(egg);
                     _gameData.Eggs.Add(egg); //Add the new egg to gameData, the LayEgg function will calculate the Mutations
                     _gameData.Creatures[i].Energy -= EGG_ENERGY_LOSS;
@@ -395,107 +430,7 @@ namespace EvolutionConquest
                 //Do vision checks
                 if (ENABLE_SIGHT)
                 {
-                    //Vision is calculated from the center of the creature, if they do not have vision greater than their texture size there is no point calculating for vision
-                    if (!_gameData.Creatures[i].IsLeavingClimate && _gameData.Creatures[i].Sight > 0)
-                    {
-                        bool foundFood = false;
-                        Vector2 newDestination = Vector2.Zero;
-                        float newDestinationDistance = 99999999999999f;
-
-                        foundFood = CheckForNearestFoodLocation(_gameData.Creatures[i].GridPositions, _gameData.Creatures[i], ref newDestination, ref newDestinationDistance);
-
-                        //Need to expand the search area if we did not find an object. This will be more noticable as the creature sight increases
-                        if (!foundFood)
-                        {
-                            List<Point> gridLocations = new List<Point>();
-                            foreach (Point p in _gameData.Creatures[i].GridPositions)
-                            {
-                                if (p.X > 0)
-                                {
-                                    gridLocations.Add(new Point(p.X - 1, p.Y));
-
-                                    if (p.Y > 0)
-                                    {
-                                        gridLocations.Add(new Point(p.X - 1, p.Y - 1));
-                                    }
-                                    if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
-                                    {
-                                        gridLocations.Add(new Point(p.X - 1, p.Y + 1));
-                                    }
-                                }
-                                if (p.X < _gameData.MapGridData.GetLength(0) - 1)
-                                {
-                                    gridLocations.Add(new Point(p.X + 1, p.Y));
-
-                                    if (p.Y > 0)
-                                    {
-                                        gridLocations.Add(new Point(p.X + 1, p.Y - 1));
-                                    }
-                                    if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
-                                    {
-                                        gridLocations.Add(new Point(p.X + 1, p.Y + 1));
-                                    }
-                                }
-                                if (p.Y > 0)
-                                {
-                                    gridLocations.Add(new Point(p.X, p.Y - 1));
-                                }
-                                if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
-                                {
-                                    gridLocations.Add(new Point(p.X, p.Y + 1));
-                                }
-                            }
-
-                            //Now that we have a list of grid locations we need to remove the ones we just checked
-                            for (int j = gridLocations.Count - 1; j >= 0; j--)
-                            {
-                                foreach (Point p in _gameData.Creatures[i].GridPositions)
-                                {
-                                    if (gridLocations[j].X == p.X && gridLocations[j].Y == p.Y)
-                                    {
-                                        gridLocations.RemoveAt(j);
-                                        break;
-                                    }
-                                }
-                            }
-
-                            //Check expanded
-                            foundFood = CheckForNearestFoodLocation(gridLocations, _gameData.Creatures[i], ref newDestination, ref newDestinationDistance);
-                        }
-
-                        if (foundFood)
-                        {
-                            //TODO Calculate the Intercept angle for the Food
-                            if (_gameData.Creatures[i].Position.X < newDestination.X && _gameData.Creatures[i].Position.Y < newDestination.Y)
-                            {
-                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
-                                double aTan = Math.Atan(inner);
-                                float degreesRotation = (float)(Math.PI - aTan);
-                                _gameData.Creatures[i].Rotation = degreesRotation;
-                            }
-                            else if (_gameData.Creatures[i].Position.X > newDestination.X && _gameData.Creatures[i].Position.Y < newDestination.Y)
-                            {
-                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
-                                double aTan = Math.Atan(inner);
-                                float degreesRotation = (float)(Math.PI + aTan);
-                                _gameData.Creatures[i].Rotation = degreesRotation;
-                            }
-                            else if (_gameData.Creatures[i].Position.X > newDestination.X && _gameData.Creatures[i].Position.Y > newDestination.Y)
-                            {
-                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
-                                double aTan = Math.Atan(inner);
-                                float degreesRotation = (float)((Math.PI * 2) - aTan);
-                                _gameData.Creatures[i].Rotation = degreesRotation;
-                            }
-                            else if (_gameData.Creatures[i].Position.X < newDestination.X && _gameData.Creatures[i].Position.Y > newDestination.Y)
-                            {
-                                double inner = Math.Abs((_gameData.Creatures[i].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[i].Position.Y - newDestination.Y));
-                                double aTan = Math.Atan(inner);
-                                float degreesRotation = (float)(aTan);
-                                _gameData.Creatures[i].Rotation = degreesRotation;
-                            }
-                        }
-                    }
+                    UpdateCreatureSight(gameTime, i);
                 }
 
                 UpdateMoveCreature(gameTime, i);
@@ -503,16 +438,19 @@ namespace EvolutionConquest
         }
         private void UpdateTickFood(GameTime gameTime)
         {
-            if (_maxFoodLevel < MAX_FOOD_LEVEL)
+            if (ENABLE_FOOD_UPGRADES)
             {
-                _elapsedTicksSinceFoodUpgrade++;
-                if (_elapsedTicksSinceFoodUpgrade >= TICKS_TILL_FOOD_UPGRADE)
+                if (_maxFoodLevel < MAX_FOOD_LEVEL)
                 {
-                    //Chance to increase the food level
-                    if (_rand.Next(0, 100) <= FOOD_UPGRADE_CHANCE_PERCENT)
+                    _elapsedTicksSinceFoodUpgrade++;
+                    if (_elapsedTicksSinceFoodUpgrade >= TICKS_TILL_FOOD_UPGRADE)
                     {
-                        _elapsedTicksSinceFoodUpgrade = 0;
-                        _maxFoodLevel += FOOD_UPGRADE_AMOUNT;
+                        //Chance to increase the food level
+                        if (_rand.Next(0, 100) <= FOOD_UPGRADE_CHANCE_PERCENT)
+                        {
+                            _elapsedTicksSinceFoodUpgrade = 0;
+                            _maxFoodLevel += FOOD_UPGRADE_AMOUNT;
+                        }
                     }
                 }
             }
@@ -552,40 +490,44 @@ namespace EvolutionConquest
                 {
                     _chart.Visible = true;
                 }
-
-                _chart.Series.Clear();
-                for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
+                if (_chart.Series != null)
                 {
-                    int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
-                    string name = String.Empty;
-                    if (count != null)
+                    _chart.Series.Clear();
+                    for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
                     {
-                        name = _gameData.ChartDataTop[i].Name + "(" + count + ")";
-                    }
-                    else
-                    {
-                        name = _gameData.ChartDataTop[i].Name;
-                    }
+                        int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
+                        string name = String.Empty;
+                        if (count != null)
+                        {
+                            name = _gameData.ChartDataTop[i].Name + "(" + count + ")";
+                        }
+                        else
+                        {
+                            name = _gameData.ChartDataTop[i].Name;
+                        }
 
-                    _chart.Series.Add(name);
-                    _chart.Series[name].XValueType = ChartValueType.Int32;
-                    _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
-                    _chart.Series[name].BorderWidth = 3;
-                    for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
-                    {
-                        _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
+                        _chart.Series.Add(name);
+                        _chart.Series[name].XValueType = ChartValueType.Int32;
+                        _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
+                        _chart.Series[name].BorderWidth = 3;
+                        for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
+                        {
+                            _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
+                        }
                     }
                 }
             }
         }
         private void UpdateOffTickHandleCollisionsAndMovement(GameTime gameTime)
         {
+            List<Creature> deadCreaturesToRemove = new List<Creature>();
+
             //CollisionDetection
             //Border Collision Detection
             for (int i = 0; i < _gameData.Creatures.Count; i++)
             {
-                //if (!_gameData.Creatures[i].IsLeavingClimate)
-                //{
+                if (_gameData.Creatures[i].IsAlive)
+                {
                     if (_gameData.Creatures[i].Position.X - (_gameData.Creatures[i].Texture.Width / 2) <= 0 || _gameData.Creatures[i].Position.X + (_gameData.Creatures[i].Texture.Width / 2) >= Global.WORLD_SIZE)
                     {
                         if (_gameData.Creatures[i].Direction.X >= 0 && _gameData.Creatures[i].Direction.Y >= 0 ||
@@ -606,32 +548,92 @@ namespace EvolutionConquest
                             _gameData.Creatures[i].Rotation = (((float)Math.PI) - _gameData.Creatures[i].Rotation);
                         }
                     }
-                //}
 
-                //Food collision
-                if (_gameData.Creatures[i].IsHerbavore)
-                {
-                    foreach (Point p in _gameData.Creatures[i].GridPositions)
+                    //Food collision
+                    if (_gameData.Creatures[i].IsHerbavore)
                     {
-                        for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
+                        foreach (Point p in _gameData.Creatures[i].GridPositions)
                         {
-                            if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength)
+                            for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
                             {
-                                if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                                if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength)
                                 {
-                                    Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
-                                    _gameData.Creatures[i].UndigestedFood++;
-                                    _gameData.Creatures[i].TotalFoodEaten++;
-                                    _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
-                                    _gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
-                                    _gameData.Food.Remove(tmpFood);
+                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                                    {
+                                        Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
+                                        _gameData.Creatures[i].UndigestedFood++;
+                                        _gameData.Creatures[i].TotalFoodEaten++;
+                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                                        _gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
+                                        _gameData.Food.Remove(tmpFood);
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                    else if (_gameData.Creatures[i].IsScavenger) //Scavenger Egg collision
+                    {
+                        foreach (Point p in _gameData.Creatures[i].GridPositions)
+                        {
+                            for (int k = (_gameData.MapGridData[p.X, p.Y].Eggs.Count - 1); k >= 0; k--)
+                            {
+                                if (_gameData.Creatures[i].SpeciesId != _gameData.MapGridData[p.X, p.Y].Eggs[k].Creature.SpeciesId)
+                                {
+                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Eggs[k].Bounds))
+                                    {
+                                        Egg tmpEgg = _gameData.MapGridData[p.X, p.Y].Eggs[k];
+                                        _gameData.Creatures[i].UndigestedFood++;
+                                        _gameData.Creatures[i].TotalFoodEaten++;
+                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                                        _gameData.RemoveEggFromGrid(tmpEgg, _gameData.MapGridData[p.X, p.Y].Eggs[k].GridPositions);
+                                        _gameData.Eggs.Remove(tmpEgg);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (_gameData.Creatures[i].IsCarnivore) //Carnivore creature collision
+                    {
+                        foreach (Point p in _gameData.Creatures[i].GridPositions)
+                        {
+                            for (int k = (_gameData.MapGridData[p.X, p.Y].Creatures.Count - 1); k >= 0; k--)
+                            {
+                                if (_gameData.Creatures[i].SpeciesId != _gameData.MapGridData[p.X, p.Y].Creatures[k].SpeciesId && (!_gameData.MapGridData[p.X, p.Y].Creatures[k].IsCarnivore || (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Carnivore))
+                                {
+                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Creatures[k].Bounds))
+                                    //if(_gameData.Creatures[i].Position.X + (_gameData.Creatures[i].Texture.Width / 2) >= _gameData.MapGridData[p.X, p.Y].Creatures[k].Position.X - (_gameData.MapGridData[p.X, p.Y].Creatures[k].Texture.Width / 2))
+                                    {
+                                        Creature tmpCreature = _gameData.MapGridData[p.X, p.Y].Creatures[k];
 
-                UpdateMoveCreature(gameTime, i);
+                                        //Get one food for eating the creature
+                                        _gameData.Creatures[i].UndigestedFood++;
+                                        _gameData.Creatures[i].TotalFoodEaten++;
+                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+
+                                        //Get all of the undigested food from the creature along with the Energy that goes along with that
+                                        _gameData.Creatures[i].UndigestedFood += tmpCreature.UndigestedFood;
+                                        _gameData.Creatures[i].TotalFoodEaten += tmpCreature.UndigestedFood;
+                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT * tmpCreature.UndigestedFood;
+
+                                        tmpCreature.IsAlive = false;
+                                        tmpCreature.DeathCause = "Eaten";
+
+                                        deadCreaturesToRemove.Add(tmpCreature);
+                                        _gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    UpdateMoveCreature(gameTime, i);
+                }
+            }
+
+            foreach (Creature c in deadCreaturesToRemove)
+            {
+                _gameData.AddDeadCreatureToList(c);
+                _gameData.Creatures.Remove(c);
             }
         }
         private void UpdateOffTickSpawnFood(GameTime gameTime)
@@ -694,23 +696,161 @@ namespace EvolutionConquest
                 #pragma warning restore CS0162 // Unreachable code detected
             }
         }
+
+        //Update Creature functions
         private void UpdateMoveCreature(GameTime gameTime, int creatureIndex)
         {
             if (_gameData.Creatures[creatureIndex].IsAlive)
             {
                 //Move the creature
                 _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * ((_gameData.Creatures[creatureIndex].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                _gameData.Creatures[creatureIndex].GridPositions = GetGridPositionsForSpriteBase(_gameData.Creatures[creatureIndex]);
                 _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].Speed * MOVEMENT_ENERGY_DEPLETION;
+                _gameData.Creatures[creatureIndex].GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
                 if (_gameData.Creatures[creatureIndex].CurrentGridPositionsForCompare != _gameData.Creatures[creatureIndex].OldGridPositionsForCompare)
                 {
+                    //Remove delta
                     List<Point> delta = _gameData.Creatures[creatureIndex].GetGridDelta();
                     if (delta.Count > 0)
                     {
                         _gameData.RemoveCreatureFromGrid(_gameData.Creatures[creatureIndex], delta);
                     }
+
+                    //Add delta
+                    delta = _gameData.Creatures[creatureIndex].GetGridDeltaAdd();
+                    if (delta.Count > 0)
+                    {
+                        _gameData.AddCreatureDeltaToGrid(_gameData.Creatures[creatureIndex], delta);
+                    }
                 }
+            }
+        }
+        private void UpdateCreatureSight(GameTime gameTime, int creatureIndex)
+        {
+            //Vision is calculated from the center of the creature, if they do not have vision greater than their texture size there is no point calculating for vision
+            if (!_gameData.Creatures[creatureIndex].IsLeavingClimate && _gameData.Creatures[creatureIndex].Sight > 0 && _gameData.Creatures[creatureIndex].TicksSinceLastVisionCheck >= _gameData.Creatures[creatureIndex].TicksBetweenVisionChecks)
+            {
+                _gameData.Creatures[creatureIndex].TicksSinceLastVisionCheck = 0; //Reset the counter
+
+                bool foundTarget = false;
+                Vector2 newDestination = Vector2.Zero;
+                float newDestinationDistance = 99999999999999f;
+
+                if (_gameData.Creatures[creatureIndex].IsHerbavore)
+                {
+                    foundTarget = CheckForNearestFoodLocation(_gameData.Creatures[creatureIndex].GridPositions, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                }
+                else if (_gameData.Creatures[creatureIndex].IsCarnivore)
+                {
+                    foundTarget = CheckForNearestPreyLocation(_gameData.Creatures[creatureIndex].GridPositions, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                }
+                else if (_gameData.Creatures[creatureIndex].IsScavenger)
+                {
+                    foundTarget = CheckForNearestEggLocation(_gameData.Creatures[creatureIndex].GridPositions, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                }
+
+                //Need to expand the search area if we did not find an object. This will be more noticable as the creature sight increases
+                if (!foundTarget)
+                {
+                    List<Point> gridLocations = new List<Point>();
+                    foreach (Point p in _gameData.Creatures[creatureIndex].GridPositions)
+                    {
+                        if (p.X > 0)
+                        {
+                            gridLocations.Add(new Point(p.X - 1, p.Y));
+
+                            if (p.Y > 0)
+                            {
+                                gridLocations.Add(new Point(p.X - 1, p.Y - 1));
+                            }
+                            if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
+                            {
+                                gridLocations.Add(new Point(p.X - 1, p.Y + 1));
+                            }
+                        }
+                        if (p.X < _gameData.MapGridData.GetLength(0) - 1)
+                        {
+                            gridLocations.Add(new Point(p.X + 1, p.Y));
+
+                            if (p.Y > 0)
+                            {
+                                gridLocations.Add(new Point(p.X + 1, p.Y - 1));
+                            }
+                            if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
+                            {
+                                gridLocations.Add(new Point(p.X + 1, p.Y + 1));
+                            }
+                        }
+                        if (p.Y > 0)
+                        {
+                            gridLocations.Add(new Point(p.X, p.Y - 1));
+                        }
+                        if (p.Y < _gameData.MapGridData.GetLength(1) - 1)
+                        {
+                            gridLocations.Add(new Point(p.X, p.Y + 1));
+                        }
+                    }
+
+                    //Now that we have a list of grid locations we need to remove the ones we just checked
+                    for (int j = gridLocations.Count - 1; j >= 0; j--)
+                    {
+                        foreach (Point p in _gameData.Creatures[creatureIndex].GridPositions)
+                        {
+                            if (gridLocations[j].X == p.X && gridLocations[j].Y == p.Y)
+                            {
+                                gridLocations.RemoveAt(j);
+                                break;
+                            }
+                        }
+                    }
+
+                    //Check expanded
+                    if (_gameData.Creatures[creatureIndex].IsHerbavore)
+                    {
+                        foundTarget = CheckForNearestFoodLocation(gridLocations, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                    }
+                    else if (_gameData.Creatures[creatureIndex].IsCarnivore)
+                    {
+                        foundTarget = CheckForNearestPreyLocation(gridLocations, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                    }
+                    else if (_gameData.Creatures[creatureIndex].IsScavenger)
+                    {
+                        foundTarget = CheckForNearestEggLocation(gridLocations, _gameData.Creatures[creatureIndex], ref newDestination, ref newDestinationDistance);
+                    }
+                }
+
+                if (foundTarget)
+                {
+                    if (_gameData.Creatures[creatureIndex].Position.X < newDestination.X && _gameData.Creatures[creatureIndex].Position.Y < newDestination.Y)
+                    {
+                        double inner = Math.Abs((_gameData.Creatures[creatureIndex].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[creatureIndex].Position.Y - newDestination.Y));
+                        double aTan = Math.Atan(inner);
+                        float degreesRotation = (float)(Math.PI - aTan);
+                        _gameData.Creatures[creatureIndex].Rotation = degreesRotation;
+                    }
+                    else if (_gameData.Creatures[creatureIndex].Position.X > newDestination.X && _gameData.Creatures[creatureIndex].Position.Y < newDestination.Y)
+                    {
+                        double inner = Math.Abs((_gameData.Creatures[creatureIndex].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[creatureIndex].Position.Y - newDestination.Y));
+                        double aTan = Math.Atan(inner);
+                        float degreesRotation = (float)(Math.PI + aTan);
+                        _gameData.Creatures[creatureIndex].Rotation = degreesRotation;
+                    }
+                    else if (_gameData.Creatures[creatureIndex].Position.X > newDestination.X && _gameData.Creatures[creatureIndex].Position.Y > newDestination.Y)
+                    {
+                        double inner = Math.Abs((_gameData.Creatures[creatureIndex].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[creatureIndex].Position.Y - newDestination.Y));
+                        double aTan = Math.Atan(inner);
+                        float degreesRotation = (float)((Math.PI * 2) - aTan);
+                        _gameData.Creatures[creatureIndex].Rotation = degreesRotation;
+                    }
+                    else if (_gameData.Creatures[creatureIndex].Position.X < newDestination.X && _gameData.Creatures[creatureIndex].Position.Y > newDestination.Y)
+                    {
+                        double inner = Math.Abs((_gameData.Creatures[creatureIndex].Position.X - newDestination.X)) / Math.Abs((_gameData.Creatures[creatureIndex].Position.Y - newDestination.Y));
+                        double aTan = Math.Atan(inner);
+                        float degreesRotation = (float)(aTan);
+                        _gameData.Creatures[creatureIndex].Rotation = degreesRotation;
+                    }
+                }
+                
             }
         }
 
@@ -725,6 +865,7 @@ namespace EvolutionConquest
             DrawCreatures();
             DrawBorders();
             DrawHighlightCreatures();
+            DrawDebugData();
 
             _spriteBatch.End();
         }
@@ -791,6 +932,37 @@ namespace EvolutionConquest
                 }
             }
         }
+        private void DrawDebugData()
+        {
+            if (ENABLE_DEBUG_DATA)
+            {
+                //Draw Map Grid
+                for (int i = 0; i < _gameData.MapGridData.GetLength(0); i++)
+                {
+                    _spriteBatch.Draw(_whitePixel, new Rectangle(i * GRID_CELL_SIZE, 0, 1, Global.WORLD_SIZE), Color.Red);
+                }
+                for (int i = 0; i < _gameData.MapGridData.GetLength(1); i++)
+                {
+                    _spriteBatch.Draw(_whitePixel, new Rectangle(0, i * GRID_CELL_SIZE, Global.WORLD_SIZE, 1), Color.Red);
+                }
+
+                //Draw Creature Bounding boxes
+                int index = 0;
+                DrawDebugDataForCreature(index);
+
+                index = 1;
+                DrawDebugDataForCreature(index);
+            }
+        }
+        private void DrawDebugDataForCreature(int index)
+        {
+            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(_gameData.Creatures[index].Position.X - _gameData.Creatures[index].Origin.X), (int)(_gameData.Creatures[index].Position.Y - _gameData.Creatures[index].Origin.Y) - 1, _gameData.Creatures[index].Texture.Width, 1), Color.Black);
+            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(_gameData.Creatures[index].Position.X - _gameData.Creatures[index].Origin.X), (int)(_gameData.Creatures[index].Position.Y + _gameData.Creatures[index].Origin.Y), _gameData.Creatures[index].Texture.Width, 1), Color.Black);
+            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(_gameData.Creatures[index].Position.X - _gameData.Creatures[index].Origin.X) - 1, (int)(_gameData.Creatures[index].Position.Y - _gameData.Creatures[index].Origin.Y), 1, _gameData.Creatures[index].Texture.Height), Color.Black);
+            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(_gameData.Creatures[index].Position.X + _gameData.Creatures[index].Origin.X), (int)(_gameData.Creatures[index].Position.Y - _gameData.Creatures[index].Origin.Y), 1, _gameData.Creatures[index].Texture.Height), Color.Black);
+
+            //_spriteBatch.DrawString(_diagFont, );
+        }
 
         //Draw HUD Functions
         private void DrawHUD()
@@ -802,6 +974,7 @@ namespace EvolutionConquest
             DrawControlsPanel();
             DrawChartBorder();
             DrawFPS();
+            DrawDebugDataHUD();
 
             _spriteBatch.End();
         }
@@ -863,6 +1036,10 @@ namespace EvolutionConquest
         {
             //_spriteBatch.DrawString(_diagFont, "FPS: " + _fps + "   " + (int)_totalElapsedSeconds, new Vector2(5, 5), Color.Black);
             _spriteBatch.DrawString(_diagFont, "FPS: " + _fps, new Vector2(2, 2), Color.Black);
+        }
+        private void DrawDebugDataHUD()
+        {
+
         }
         private void DrawPanelWithText(SpriteFont headerFont, string header, SpriteFont textFont, List<string> text, Global.Anchor anchor, int lockedWidthValue, int lockedHeightValue, int screenBuffer)
         {
@@ -1000,59 +1177,59 @@ namespace EvolutionConquest
             _maxFoodLevel = 2;
             _climateHeight = (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
         }
-        private List<Point> GetGridPositionsForSpriteBase(SpriteBase sb)
-        {
-            List<Point> gridPositions = new List<Point>();
+        //private List<Point> GetGridPositionsForSpriteBase(ref SpriteBase sb)
+        //{
+        //    List<Point> gridPositions = new List<Point>();
 
-            //Find the exact grid position we are in then check the surrounding grid locations
-            Point exactGridPos = sb.CalculateGridPosition(GRID_CELL_SIZE);
-            gridPositions.Add(exactGridPos);
+        //    //Find the exact grid position we are in then check the surrounding grid locations
+        //    Point exactGridPos = sb.CalculateGridPosition(GRID_CELL_SIZE);
+        //    gridPositions.Add(exactGridPos);
 
-            if (exactGridPos.X > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y));
-                if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y - 1].CellRectangle))
-                {
-                    gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y - 1));
-                }
-                else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y + 1].CellRectangle))
-                {
-                    gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y + 1));
-                }
-            }
-            else if (exactGridPos.X < _gameData.MapGridData.GetLength(0) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y));
-                if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y - 1].CellRectangle))
-                {
-                    gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y - 1));
-                }
-                else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y + 1].CellRectangle))
-                {
-                    gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y + 1));
-                }
-            }
+        //    if (exactGridPos.X > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y].CellRectangle))
+        //    {
+        //        gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y));
+        //        if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y - 1].CellRectangle))
+        //        {
+        //            gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y - 1));
+        //        }
+        //        else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y + 1].CellRectangle))
+        //        {
+        //            gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y + 1));
+        //        }
+        //    }
+        //    else if (exactGridPos.X < _gameData.MapGridData.GetLength(0) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y].CellRectangle))
+        //    {
+        //        gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y));
+        //        if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y - 1].CellRectangle))
+        //        {
+        //            gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y - 1));
+        //        }
+        //        else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y + 1].CellRectangle))
+        //        {
+        //            gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y + 1));
+        //        }
+        //    }
 
-            if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y - 1].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y - 1));
-            }
-            else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y + 1].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y + 1));
-            }
+        //    if (exactGridPos.Y > 0 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y - 1].CellRectangle))
+        //    {
+        //        gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y - 1));
+        //    }
+        //    else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && sb.Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y + 1].CellRectangle))
+        //    {
+        //        gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y + 1));
+        //    }
 
-            //Move the Current Grid position string to the Old
-            string gridPosition = String.Empty;
-            foreach (Point p in gridPositions)
-            {
-                gridPosition += p.X + "," + p.Y + " ";
-            }
+        //    //Move the Current Grid position string to the Old
+        //    string gridPosition = String.Empty;
+        //    foreach (Point p in gridPositions)
+        //    {
+        //        gridPosition += p.X + "," + p.Y + " ";
+        //    }
 
-            sb.SetOldGridPos(gridPosition);
+        //    sb.SetOldGridPos(gridPosition);
 
-            return gridPositions;
-        }
+        //    return gridPositions;
+        //}
         private void SpawnFood()
         {
             Vector2 position = new Vector2(_rand.Next(_foodTexture.Width, Global.WORLD_SIZE - _foodTexture.Width), _rand.Next(_foodTexture.Height, Global.WORLD_SIZE - _foodTexture.Height));
@@ -1083,13 +1260,13 @@ namespace EvolutionConquest
                 food.Position = new Vector2(food.Position.X, Global.WORLD_SIZE - (float)Math.Ceiling(food.Texture.Height / 2.0));
             }
 
-            food.GridPositions = GetGridPositionsForSpriteBase(food);
+            food.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
             //50% chance to apply a food level to the food
-            if (_rand.Next(0, 100) > 50)
+            if (maxHerbavoreLevel > 0 && _rand.Next(0, 100) > 50)
                 food.FoodStrength = _rand.Next(1, (int)maxHerbavoreLevel);
             else
-                food.FoodStrength = 1;
+                food.FoodStrength = 0;
 
             food.DisplayText = "(" + food.FoodStrength + ")";
             food.TextSize = _foodFont.MeasureString(food.DisplayText);
@@ -1103,7 +1280,7 @@ namespace EvolutionConquest
             creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
             creature.Texture = _basicCreatureTexture;
             creature.Position = new Vector2(_rand.Next(creature.Texture.Width, Global.WORLD_SIZE - creature.Texture.Width), _rand.Next(creature.Texture.Height, Global.WORLD_SIZE - creature.Texture.Height));
-            creature.GridPositions = GetGridPositionsForSpriteBase(creature);
+            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
             _gameData.Creatures.Add(creature);
             _gameData.AddCreatureToGrid(creature);
@@ -1135,6 +1312,59 @@ namespace EvolutionConquest
             }
 
             return foundFood;
+        }
+        private bool CheckForNearestEggLocation(List<Point> gridPositions, Creature creature, ref Vector2 closest, ref float distance)
+        {
+            bool foundEgg = false;
+
+            for (int k = 0; k < gridPositions.Count; k++)
+            {
+                foreach (Egg f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Eggs)
+                {
+                    if (f.Creature.SpeciesId != creature.SpeciesId)
+                    {
+                        float tmpDistance = Vector2.Distance(creature.Position, f.Position);
+                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
+                        {
+                            if (tmpDistance < distance)
+                            {
+                                foundEgg = true;
+                                closest = f.Position;
+                                distance = tmpDistance;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return foundEgg;
+        }
+        private bool CheckForNearestPreyLocation(List<Point> gridPositions, Creature creature, ref Vector2 closest, ref float distance)
+        {
+            bool foundPrey = false;
+
+            for (int k = 0; k < gridPositions.Count; k++)
+            {
+                foreach (Creature f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Creatures)
+                {
+                    if (f.SpeciesId != creature.SpeciesId && (!f.IsCarnivore || creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Carnivore))
+                    {
+                        float tmpDistance = 9999999;
+                        Vector2 impactPosition = CollisionDetection.CalculateMovingInterceptPoint(creature.Position, creature.Direction, creature.Speed, f.Position, f.Direction, f.Speed, ref tmpDistance);
+                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
+                        {
+                            if (tmpDistance < distance)
+                            {
+                                foundPrey = true;
+                                closest = impactPosition;
+                                distance = tmpDistance;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return foundPrey;
         }
     }
 }
