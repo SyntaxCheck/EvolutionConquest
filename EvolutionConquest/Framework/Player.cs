@@ -36,5 +36,9 @@ public class Player
         {
             gameData.ShowFoodStrength = !gameData.ShowFoodStrength;
         }
+        if (inputState.IsNewKeyPress(Keys.F8, controllingPlayer, out playerIndex))
+        {
+            gameData.ShowDebugData = !gameData.ShowDebugData;
+        }
     }
 }

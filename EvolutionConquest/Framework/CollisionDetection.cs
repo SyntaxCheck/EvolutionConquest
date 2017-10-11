@@ -82,7 +82,7 @@ public static class CollisionDetection
     {
         Vector2 totarget = preyPosition - predatorPosition;
         Vector2 predatorVelocity = predatorDirection * predatorSpeed;
-        Vector2 preyVelocity = preyDirection * predatorSpeed;
+        Vector2 preyVelocity = preyDirection * preySpeed;
 
         float a = Vector2.Dot(preyVelocity, preyVelocity) - (preySpeed * preySpeed);
         float b = 2 * Vector2.Dot(preyVelocity, totarget);
@@ -109,5 +109,41 @@ public static class CollisionDetection
         timeToImpact = bulletPath.Length() / predatorSpeed;//speed must be in units per second
 
         return aimSpot;
+    }
+    public static double Dot(Vector2 a, Vector2 b)
+    {
+        return a.X * b.X + a.Y * b.Y;
+    }
+    public static double Magnitude(Vector2 vec)
+    {
+        return Math.Sqrt(vec.X * vec.X + vec.Y * vec.Y);
+    }
+    public static double AngleBetween(Vector2 b, Vector2 c)
+    {
+        return Math.Acos(Dot(b, c) / (Magnitude(b) * Magnitude(c)));
+    }
+
+    public static Vector2? FindCollisionPoint(Vector2 target_pos, Vector2 target_vel, Vector2 interceptor_pos, double interceptor_speed)
+    {
+        var k = Magnitude(target_vel) / interceptor_speed;
+        var distance_to_target = Magnitude(interceptor_pos - target_pos);
+
+        var b_hat = target_vel;
+        var c_hat = interceptor_pos - target_pos;
+
+        var CAB = AngleBetween(b_hat, c_hat);
+        var ABC = Math.Asin(Math.Sin(CAB) * k);
+        var ACB = (Math.PI) - (CAB + ABC);
+
+        var j = distance_to_target / Math.Sin(ACB);
+        var a = j * Math.Sin(CAB);
+        var b = j * Math.Sin(ABC);
+
+
+        double time_to_collision = b / Magnitude(target_vel);
+        float timeToCollisionFloat = (float)time_to_collision;
+        var collision_pos = target_pos + (target_vel * timeToCollisionFloat);
+
+        return collision_pos;
     }
 }

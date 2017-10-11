@@ -151,7 +151,7 @@ public class SpriteBase
 
         return pos;
     }
-    public List<Point> GetGridDelta()
+    public List<Point> GetGridDeltaAdd()
     {
         List<Point> delta = new List<Point>();
 
@@ -176,7 +176,7 @@ public class SpriteBase
 
         return delta;
     }
-    public List<Point> GetGridDeltaAdd()
+    public List<Point> GetGridDelta()
     {
         List<Point> delta = new List<Point>();
 

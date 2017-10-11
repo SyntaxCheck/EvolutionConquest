@@ -51,6 +51,7 @@ public class Creature : SpriteBase
             Direction.Normalize();
         }
     }
+    public Vector2 CalculatedIntercept { get; set; } //Simply used for debugging purposes
     public int UndigestedFood
     {
         get { return _undigestedFood; }
@@ -167,6 +168,7 @@ public class Creature : SpriteBase
         AncestorIds = new List<int>();
         DeathCause = String.Empty;
         IsLeavingClimate = false;
+        CalculatedIntercept = Vector2.Zero;
     }
 
     public void InitNewCreature(Random rand, ref Names names, int speciesId, ref int creatureIdCtr)
