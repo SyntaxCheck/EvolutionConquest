@@ -12,8 +12,7 @@ namespace EvolutionConquest
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        [STAThread]
-        static void Main()
+        [STAThread]        static void Main()
         {
             //try
             //{

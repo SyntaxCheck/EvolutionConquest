@@ -30,7 +30,14 @@ namespace EvolutionConquest
         //Game variables
         private GameData _gameData;
         private Texture2D _whitePixel;
-        private Texture2D _basicCreatureTexture;
+        private Texture2D _herbavoreTexture;
+        private Texture2D _herbavoreSightTexture;
+        private Texture2D _carnivoreTexture;
+        private Texture2D _carnivoreSightTexture;
+        private Texture2D _scavengerTexture;
+        private Texture2D _scavengerSightTexture;
+        private Texture2D _omnivoreTexture;
+        private Texture2D _omnivoreSightTexture;
         private Texture2D _foodTexture;
         private Texture2D _eggTexture;
         private Random _rand;
@@ -92,7 +99,7 @@ namespace EvolutionConquest
 
             InitVariables();
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
-            _writeStats = true;
+            _writeStats = false;
 
             IsMouseVisible = true;
 
@@ -134,7 +141,14 @@ namespace EvolutionConquest
             _creatureGenerator = new CreatureShapeGenerator();
             _foodGenerator = new FoodShapeGenerator();
             _eggGenerator = new EggShapeGenerator();
-            _basicCreatureTexture = _creatureGenerator.CreateCreatureTexture(_graphics.GraphicsDevice);
+            _herbavoreTexture = _creatureGenerator.CreateCreatureHerbavoreTexture(_graphics.GraphicsDevice, false);
+            _herbavoreSightTexture = _creatureGenerator.CreateCreatureHerbavoreTexture(_graphics.GraphicsDevice, true);
+            _carnivoreTexture = _creatureGenerator.CreateCreatureCarnivoreTexture(_graphics.GraphicsDevice, false);
+            _carnivoreSightTexture = _creatureGenerator.CreateCreatureCarnivoreTexture(_graphics.GraphicsDevice, true);
+            _scavengerTexture = _creatureGenerator.CreateCreatureScavengerTexture(_graphics.GraphicsDevice, false);
+            _scavengerSightTexture = _creatureGenerator.CreateCreatureScavengerTexture(_graphics.GraphicsDevice, true);
+            _omnivoreTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, false);
+            _omnivoreSightTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, false);
             _foodTexture = _foodGenerator.CreateFoodTexture(_graphics.GraphicsDevice);
             _eggTexture = _eggGenerator.CreateEggTexture(_graphics.GraphicsDevice, Color.Black, Color.White);
 
@@ -179,59 +193,18 @@ namespace EvolutionConquest
             }
 
             //Game start, load in starting population of creatures
-            int startingCreatureAmount = (int)(((Global.WORLD_SIZE * Global.WORLD_SIZE) / ((_basicCreatureTexture.Width + _basicCreatureTexture.Height) / 2)) * INIT_STARTING_CREATURE_RATIO);
+            int startingCreatureAmount = (int)(((Global.WORLD_SIZE * Global.WORLD_SIZE) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * INIT_STARTING_CREATURE_RATIO);
             for (int i = 0; i < startingCreatureAmount; i++)
             {
                 SpawnStartingCreature();
             }
 
             //Test creatures
-            Creature creature = new Creature();
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
-            _speciesIdCounter++;
-            creature.Species = "Cheater";
-            creature.OriginalSpecies = "Cheater";
-            creature.Texture = _basicCreatureTexture;
-            //creature.Position = new Vector2(210, 100);
-            creature.Position = new Vector2(200, 100); //Position 1, does NOT work
-            creature.Rotation = MathHelper.ToRadians(220);
-            creature.ColdClimateTolerance = 5;
-            creature.HotClimateTolerance = 0;
-            creature.Sight = 1;
-            creature.Carnivore = 10;
-            creature.Speed = 20;
-            creature.IsHerbavore = false;
-            creature.IsCarnivore = true;
-            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
-            _gameData.AddCreatureToGrid(creature);
-            _gameData.Creatures.Add(creature);
-
-            Creature creature2 = new Creature();
-            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
-            _speciesIdCounter++;
-            creature2.Species = "Cheater2";
-            creature2.OriginalSpecies = "Cheater2";
-            creature2.Texture = _basicCreatureTexture;
-            //creature2.Position = new Vector2(10, 100);
-            creature2.Position = new Vector2(10, 100); //Position 1, does NOT work
-            creature2.Rotation = MathHelper.ToRadians(135);
-            creature2.ColdClimateTolerance = 100;
-            creature2.HotClimateTolerance = 0;
-            creature2.Sight = 0;
-            creature2.Speed = 20;
-            creature2.Herbavore = 1;
-            creature2.IsHerbavore = true;
-            creature2.IsCarnivore = false;
-            creature2.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
-            _gameData.AddCreatureToGrid(creature2);
-            _gameData.Creatures.Add(creature2);
-
-            Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
-            SpawnFood(foodPos, 1);
+            //SpawnTwoTestCreaturesWithInterceptPaths();
+            //SpawnOneTestCarnivore();
+            //SpawnOneTestScavenger();
 
             Global.Camera.AdjustZoom(500);
-            _gameData.Focus = creature;
-            _gameData.FocusIndex = _gameData.Creatures.Count - 1;
 
             //Game Controls list for HUD
             _controlsListText = new List<string>();
@@ -375,7 +348,7 @@ namespace EvolutionConquest
                 {
                     //TODO change texture based on creature properties dynamically
                     //Assign texture to the creature
-                    _gameData.Eggs[i].Creature.Texture = _basicCreatureTexture;
+                    _gameData.Eggs[i].Creature.Texture = DetermineCreatureTexture(_gameData.Eggs[i].Creature);
                     _gameData.Creatures.Add(_gameData.Eggs[i].Creature);
                     _gameData.RemoveEggFromGrid(_gameData.Eggs[i], _gameData.Eggs[i].GridPositions);
                     _gameData.Eggs.RemoveAt(i);
@@ -426,7 +399,7 @@ namespace EvolutionConquest
                     egg.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
                     _gameData.AddEggToGrid(egg);
                     _gameData.Eggs.Add(egg); //Add the new egg to gameData, the LayEgg function will calculate the Mutations
-                    _gameData.Creatures[i].Energy -= EGG_ENERGY_LOSS;
+                    _gameData.Creatures[i].EggCreateEnergyLoss(EGG_ENERGY_LOSS); //Pass in the CONST energy loss so that we can do additional calculations
                 }
                 //Do vision checks
                 if (ENABLE_SIGHT)
@@ -968,41 +941,53 @@ namespace EvolutionConquest
         }
         private void DrawDebugDataForCreature(Creature creature, bool left)
         {
-            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X), (int)(creature.Position.Y - creature.Origin.Y) - 1, creature.Texture.Width, 1), Color.Black);
-            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X), (int)(creature.Position.Y + creature.Origin.Y), creature.Texture.Width, 1), Color.Black);
-            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X) - 1, (int)(creature.Position.Y - creature.Origin.Y), 1, creature.Texture.Height), Color.Black);
-            _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X + creature.Origin.X), (int)(creature.Position.Y - creature.Origin.Y), 1, creature.Texture.Height), Color.Black);
-
-            if (creature.CalculatedIntercept != Vector2.Zero)
+            if (creature != null)
             {
-                _spriteBatch.Draw(_whitePixel, new Rectangle((int)Math.Round(creature.CalculatedIntercept.X,0) - 2, (int)Math.Round(creature.CalculatedIntercept.Y, 0) - 2, 4, 4), Color.Red);
-            }
+                _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X), (int)(creature.Position.Y - creature.Origin.Y) - 1, creature.Texture.Width, 1), Color.Black);
+                _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X), (int)(creature.Position.Y + creature.Origin.Y), creature.Texture.Width, 1), Color.Black);
+                _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.Origin.X) - 1, (int)(creature.Position.Y - creature.Origin.Y), 1, creature.Texture.Height), Color.Black);
+                _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X + creature.Origin.X), (int)(creature.Position.Y - creature.Origin.Y), 1, creature.Texture.Height), Color.Black);
 
-            List<string> debugInfo = new List<string>();
-            debugInfo.Add("Position: " + (int)creature.Position.X + "," + (int)creature.Position.Y);
-            debugInfo.Add("Rotation R: " + Math.Round(creature.Rotation,2));
-            debugInfo.Add("Rotation D: " + Math.Round(MathHelper.ToDegrees(creature.Rotation), 2));
-            if (creature.CalculatedIntercept != Vector2.Zero)
-            {
-                debugInfo.Add("Intercept: " + (int)creature.CalculatedIntercept.X + "," + (int)creature.CalculatedIntercept.Y);
-            }
-
-            for (int x = 0; x < _gameData.MapGridData.GetLength(0); x++)
-            {
-                for (int y = 0; y < _gameData.MapGridData.GetLength(1); y++)
+                if (creature.Sight > 0)
                 {
-                    if (_gameData.MapGridData[x, y].Creatures.Contains(creature))
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)) - 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2, 1), Color.Gray);
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y + creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2, 1), Color.Gray);
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)) - 1, (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2), Color.Gray);
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X + creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0) * 2)), Color.Gray);
+                }
+
+                if (creature.CalculatedIntercept != Vector2.Zero)
+                {
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)Math.Round(creature.CalculatedIntercept.X, 0) - 2, (int)Math.Round(creature.CalculatedIntercept.Y, 0) - 2, 4, 4), Color.Red);
+                }
+
+                List<string> debugInfo = new List<string>();
+                debugInfo.Add("Position: " + (int)creature.Position.X + "," + (int)creature.Position.Y);
+                debugInfo.Add("Direction: " + (int)creature.Direction.X + "," + (int)creature.Direction.Y);
+                debugInfo.Add("Rotation R: " + Math.Round(creature.Rotation, 2));
+                debugInfo.Add("Rotation D: " + Math.Round(MathHelper.ToDegrees(creature.Rotation), 2));
+                if (creature.CalculatedIntercept != Vector2.Zero)
+                {
+                    debugInfo.Add("Intercept: " + (int)creature.CalculatedIntercept.X + "," + (int)creature.CalculatedIntercept.Y);
+                }
+
+                for (int x = 0; x < _gameData.MapGridData.GetLength(0); x++)
+                {
+                    for (int y = 0; y < _gameData.MapGridData.GetLength(1); y++)
                     {
-                        debugInfo.Add("MapCell: " + x + "," + y);
+                        if (_gameData.MapGridData[x, y].Creatures.Contains(creature))
+                        {
+                            debugInfo.Add("MapCell: " + x + "," + y);
+                        }
                     }
                 }
-            }
 
-            int lockWidth = 120;
-            if(left)
-                DrawDebugPanel(_diagFont, debugInfo, lockWidth, new Vector2(creature.Position.X - (creature.Texture.Width / 2) - 5 - lockWidth, creature.Position.Y - (creature.Texture.Height / 2)));
-            else
-                DrawDebugPanel(_diagFont, debugInfo, lockWidth, new Vector2(creature.Position.X + (creature.Texture.Width / 2) + 5, creature.Position.Y - (creature.Texture.Height / 2)));
+                int lockWidth = 125;
+                if (left)
+                    DrawDebugPanel(_diagFont, debugInfo, lockWidth, new Vector2(creature.Position.X - (creature.Texture.Width / 2) - 5 - lockWidth, creature.Position.Y - (creature.Texture.Height / 2)));
+                else
+                    DrawDebugPanel(_diagFont, debugInfo, lockWidth, new Vector2(creature.Position.X + (creature.Texture.Width / 2) + 5, creature.Position.Y - (creature.Texture.Height / 2)));
+            }
         }
         private void DrawDebugPanel(SpriteFont textFont, List<string> text, int lockedWidth, Vector2 position)
         {
@@ -1313,7 +1298,7 @@ namespace EvolutionConquest
         {
             Creature creature = new Creature();
             creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
-            creature.Texture = _basicCreatureTexture;
+            creature.Texture = DetermineCreatureTexture(creature);
             creature.Position = new Vector2(_rand.Next(creature.Texture.Width, Global.WORLD_SIZE - creature.Texture.Width), _rand.Next(creature.Texture.Height, Global.WORLD_SIZE - creature.Texture.Height));
             creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
@@ -1333,7 +1318,7 @@ namespace EvolutionConquest
                     if (f.FoodStrength <= creature.Herbavore)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
-                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
+                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
                         {
                             if (tmpDistance < distance)
                             {
@@ -1359,7 +1344,7 @@ namespace EvolutionConquest
                     if (f.Creature.SpeciesId != creature.SpeciesId)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
-                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
+                        if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
                         {
                             if (tmpDistance < distance)
                             {
@@ -1389,9 +1374,9 @@ namespace EvolutionConquest
                         Vector2? impactPosition = CollisionDetection.FindCollisionPoint(f.Position, f.Direction * f.Speed, creature.Position, creature.Speed);
                         tmpDistance = Vector2.Distance(creature.Position, (Vector2)impactPosition);
 
-                        if (impactPosition != null)
+                        if (impactPosition != null && !float.IsNaN(impactPosition.Value.X))
                         {
-                            if (tmpDistance <= creature.Sight + creature.TextureCollideDistance)
+                            if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
                             {
                                 if (tmpDistance < distance)
                                 {
@@ -1406,6 +1391,154 @@ namespace EvolutionConquest
             }
 
             return foundPrey;
+        }
+        private Texture2D DetermineCreatureTexture(Creature creature)
+        {
+            if (creature.IsCarnivore && creature.Sight > 0)
+            {
+                return _carnivoreSightTexture;
+            }
+            else if (creature.IsCarnivore)
+            {
+                return _carnivoreTexture;
+            }
+            else if (creature.IsHerbavore && creature.Sight > 0)
+            {
+                return _herbavoreSightTexture;
+            }
+            else if (creature.IsHerbavore)
+            {
+                return _herbavoreTexture;
+            }
+            else if (creature.IsScavenger && creature.Sight > 0)
+            {
+                return _scavengerSightTexture;
+            }
+            else if (creature.IsScavenger)
+            {
+                return _scavengerTexture;
+            }
+            else if (creature.IsOmnivore && creature.Sight > 0)
+            {
+                return _omnivoreSightTexture;
+            }
+            else if (creature.IsOmnivore)
+            {
+                return _omnivoreTexture;
+            }
+            else
+            {
+                return _herbavoreTexture;
+            }
+        }
+
+        //Debug Creature spawns
+        private void SpawnTwoTestCreaturesWithInterceptPaths()
+        {
+            Creature creature = new Creature();
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            _speciesIdCounter++;
+            creature.Species = "Cheater";
+            creature.OriginalSpecies = "Cheater";
+            //creature.Position = new Vector2(210, 100);
+            creature.Position = new Vector2(200, 100); //Position 1, does NOT work
+            creature.Rotation = MathHelper.ToRadians(220);
+            creature.ColdClimateTolerance = 10;
+            creature.HotClimateTolerance = 0;
+            creature.Sight = 30;
+            creature.Carnivore = 10;
+            creature.Speed = 18;
+            creature.IsHerbavore = false;
+            creature.IsCarnivore = true;
+            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            creature.Texture = DetermineCreatureTexture(creature);
+            _gameData.AddCreatureToGrid(creature);
+            _gameData.Creatures.Add(creature);
+
+            Creature creature2 = new Creature();
+            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            _speciesIdCounter++;
+            creature2.Species = "Cheater2";
+            creature2.OriginalSpecies = "Cheater2";
+            //creature2.Position = new Vector2(10, 100);
+            creature2.Position = new Vector2(10, 100); //Position 1, does NOT work
+            creature2.Rotation = MathHelper.ToRadians(135);
+            creature2.ColdClimateTolerance = 10;
+            creature2.HotClimateTolerance = 0;
+            creature2.Sight = 0;
+            creature2.Speed = 23;
+            creature2.Herbavore = 1;
+            creature2.Scavenger = 10;
+            creature2.IsHerbavore = false;
+            creature2.IsCarnivore = false;
+            creature2.IsScavenger = true;
+            creature2.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            creature2.Texture = DetermineCreatureTexture(creature2);
+            _gameData.AddCreatureToGrid(creature2);
+            _gameData.Creatures.Add(creature2);
+
+            Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
+            SpawnFood(foodPos, 1);
+            _gameData.Focus = creature;
+            _gameData.FocusIndex = _gameData.Creatures.Count - 1;
+        }
+        private void SpawnOneTestCarnivore()
+        {
+            Creature creature = new Creature();
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            _speciesIdCounter++;
+            creature.Species = "Cheater";
+            creature.OriginalSpecies = "Cheater";
+            creature.Position = new Vector2(200, 100);
+            creature.Rotation = MathHelper.ToRadians(220);
+            creature.ColdClimateTolerance = 10;
+            creature.HotClimateTolerance = 0;
+            creature.Sight = 15;
+            creature.Carnivore = 10;
+            creature.Speed = 30;
+            creature.Lifespan = 100000;
+            creature.Energy = 100000;
+            creature.EggInterval = 100000; //So it cannot lay any eggs
+            creature.IsHerbavore = false;
+            creature.IsCarnivore = true;
+            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            creature.Texture = DetermineCreatureTexture(creature);
+            _gameData.AddCreatureToGrid(creature);
+            _gameData.Creatures.Add(creature);
+
+            Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
+            SpawnFood(foodPos, 1);
+            _gameData.Focus = creature;
+            _gameData.FocusIndex = _gameData.Creatures.Count - 1;
+        }
+        private void SpawnOneTestScavenger()
+        {
+            Creature creature = new Creature();
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            _speciesIdCounter++;
+            creature.Species = "Cheater";
+            creature.OriginalSpecies = "Cheater";
+            creature.Position = new Vector2(200, 100);
+            creature.Rotation = MathHelper.ToRadians(220);
+            creature.ColdClimateTolerance = 0;
+            creature.HotClimateTolerance = 0;
+            creature.Sight = 15;
+            creature.Scavenger = 10;
+            creature.Speed = 30;
+            creature.Lifespan = 100000;
+            creature.Energy = 100000;
+            creature.EggInterval = 100000; //So it cannot lay any eggs
+            creature.IsHerbavore = false;
+            creature.IsScavenger = true;
+            creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+            creature.Texture = DetermineCreatureTexture(creature);
+            _gameData.AddCreatureToGrid(creature);
+            _gameData.Creatures.Add(creature);
+
+            Vector2 foodPos = new Vector2(creature.Position.X + 15, creature.Position.Y - 100);
+            SpawnFood(foodPos, 1);
+            _gameData.Focus = creature;
+            _gameData.FocusIndex = _gameData.Creatures.Count - 1;
         }
     }
 }

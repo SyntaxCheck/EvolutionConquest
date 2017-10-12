@@ -139,7 +139,8 @@ public class Creature : SpriteBase
     public const float HOT_TOLERANCE_INIT_MIN = 0;
     public const float HOT_TOLERANCE_INIT_MAX = 10;
     public const float ENERGY_INIT = 450;
-    public const int TICKS_BETWEEN_SIGHT_EVAL = 30;
+    public const int TICKS_BETWEEN_SIGHT_EVAL = 10;
+    public const float EGG_CAMO_COST_MULTIPLIER = 10f; //Multiplier on the energy cost for laying the egg
 
     //public const string CREATURE_TABLE_NAME = "Creatures";
     //public const string ANCESTORS_TABLE_NAME = "Ancestors";
@@ -361,7 +362,7 @@ public class Creature : SpriteBase
         baby.ColdClimateTolerance = _coldClimateTolerance + Mutation(rand, 15 - _hotClimateTolerance);
         baby.HotClimateTolerance = _hotClimateTolerance + Mutation(rand, 15 - _coldClimateTolerance);
         baby.Herbavore = Herbavore + Mutation(rand, 15);
-        baby.Carnivore = Carnivore + Mutation(rand, 10);
+        baby.Carnivore = Carnivore + Mutation(rand, 5);
         baby.Omnivore = Omnivore + Mutation(rand, 5);
         baby.Scavenger = Scavenger + Mutation(rand, 5);
 
@@ -443,6 +444,7 @@ public class Creature : SpriteBase
         egg.Position = Position;
         egg.ElapsedTicks = 0;
         egg.TicksTillHatched = (int)Math.Ceiling(EggIncubation);
+        egg.Camo = EggCamo;
         egg.Creature = baby;
 
         return egg;
@@ -451,7 +453,7 @@ public class Creature : SpriteBase
     {
         List<string> info = new List<string>();
 
-        info.Add("Species: " + Species);
+        info.Add("Species: " + Species + " (" + SpeciesId + ")");
         if (String.IsNullOrEmpty(SpeciesStrain))
         {
             info.Add("Strain: Original");
@@ -509,11 +511,11 @@ public class Creature : SpriteBase
         info.Add("Cloning: " + Cloning);
         info.Add("Cold Tolerance: " + _coldClimateTolerance);
         info.Add("Hot Tolerance: " + _hotClimateTolerance);
-        info.Add(" ");
-        info.Add("Species ID: " + SpeciesId);
-        info.Add("Position: {X:" + ((int)Position.X).ToString().PadLeft(4, ' ') + ", Y:" + ((int)Position.Y).ToString().PadLeft(4, ' '));
-        info.Add("Direction: " + Direction);
-        info.Add("Rotation: " + Rotation + " :: " + MathHelper.ToDegrees(Rotation));
+        //info.Add(" ");
+        //info.Add("Species ID: " + SpeciesId);
+        //info.Add("Position: {X:" + ((int)Position.X).ToString().PadLeft(4, ' ') + ", Y:" + ((int)Position.Y).ToString().PadLeft(4, ' '));
+        //info.Add("Direction: " + Direction);
+        //info.Add("Rotation: " + Rotation + " :: " + MathHelper.ToDegrees(Rotation));
 
         return info;
     }
@@ -611,6 +613,14 @@ public class Creature : SpriteBase
         }
 
         return sqlStatements;
+    }
+    public void EggCreateEnergyLoss(float baseEnergyLost)
+    {
+        if (Camo > 0)
+        {
+            baseEnergyLost += Camo * EGG_CAMO_COST_MULTIPLIER;
+        }
+        Energy -= baseEnergyLost;
     }
 
     //Helper functions

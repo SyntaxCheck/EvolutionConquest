@@ -9,6 +9,7 @@ public class Egg : SpriteBase
     public Creature Creature { get; set; }
     public int TicksTillHatched { get; set; }
     public int ElapsedTicks { get; set; }
+    public float Camo { get; set; }
 
     public Egg()
     { }
