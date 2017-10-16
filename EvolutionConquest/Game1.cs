@@ -223,6 +223,7 @@ namespace EvolutionConquest
             _controlsListText.Add("[H] Focus Top Herbavore");
             _controlsListText.Add("[C] Focus Top Carnivore");
             _controlsListText.Add("[V] Focus Top Scavenger");
+            _controlsListText.Add("[O] Focus Top Omnivore");
             _controlsListText.Add(" ");
             _controlsListText.Add("[F12] Toggle Control Menu");
 
@@ -584,10 +585,11 @@ namespace EvolutionConquest
                                         _gameData.Creatures[i].TotalFoodEaten++;
                                         _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
 
-                                        //Get all of the undigested food from the creature along with the Energy that goes along with that
-                                        _gameData.Creatures[i].UndigestedFood += tmpCreature.UndigestedFood;
-                                        _gameData.Creatures[i].TotalFoodEaten += tmpCreature.UndigestedFood;
-                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT * tmpCreature.UndigestedFood;
+                                        //Carnivores over performing so remove this advantage
+                                        ////Get all of the undigested food from the creature along with the Energy that goes along with that
+                                        //_gameData.Creatures[i].UndigestedFood += tmpCreature.UndigestedFood;
+                                        //_gameData.Creatures[i].TotalFoodEaten += tmpCreature.UndigestedFood;
+                                        //_gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT * tmpCreature.UndigestedFood;
 
                                         tmpCreature.IsAlive = false;
                                         tmpCreature.DeathCause = "Eaten";
@@ -1394,7 +1396,16 @@ namespace EvolutionConquest
         }
         private Texture2D DetermineCreatureTexture(Creature creature)
         {
-            if (creature.IsCarnivore && creature.Sight > 0)
+            //Omnivore must be first
+            if (creature.IsOmnivore && creature.Sight > 0)
+            {
+                return _omnivoreSightTexture;
+            }
+            else if (creature.IsOmnivore)
+            {
+                return _omnivoreTexture;
+            }
+            else if (creature.IsCarnivore && creature.Sight > 0)
             {
                 return _carnivoreSightTexture;
             }
@@ -1417,14 +1428,6 @@ namespace EvolutionConquest
             else if (creature.IsScavenger)
             {
                 return _scavengerTexture;
-            }
-            else if (creature.IsOmnivore && creature.Sight > 0)
-            {
-                return _omnivoreSightTexture;
-            }
-            else if (creature.IsOmnivore)
-            {
-                return _omnivoreTexture;
             }
             else
             {

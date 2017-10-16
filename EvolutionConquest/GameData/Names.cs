@@ -1,15 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 public class Names
 {
+    private bool _localListFound;
+    private List<string> _wordList;
     public List<string> NameList { get; set; }
 
     public Names()
     {
+        string wordListName = "wordList.txt";
+        if (File.Exists(wordListName))
+        {
+            _localListFound = true;
+            _wordList = File.ReadAllLines(wordListName).ToList();
+        }
+        else
+        {
+            _localListFound = false;
+        }
+
         NameList = new List<string>();
 
         NameList.Add("Takako");
@@ -5452,8 +5466,16 @@ public class Names
         }
         else
         {
-            DateTime time = DateTime.Now;
-            name = time.Year.ToString() + time.Month.ToString() + time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString() + Math.Round(rand.NextDouble(), 8).ToString();
+            if (_localListFound)
+            {
+                NameList.AddRange(_wordList);
+                _localListFound = false;
+            }
+            else
+            {
+                DateTime time = DateTime.Now;
+                name = time.Year.ToString() + time.Month.ToString() + time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString() + Math.Round(rand.NextDouble(), 8).ToString();
+            }
         }
 
         return name;

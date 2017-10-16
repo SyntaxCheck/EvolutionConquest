@@ -449,6 +449,21 @@ public class Camera
                 }
             }
         }
+        else if (inputState.IsNewKeyPress(Keys.O, controllingPlayer, out playerIndex)) //Focus on top Omnivore
+        {
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsOmnivore && t.Omnivore > t.Carnivore && t.Omnivore > t.Herbavore && t.Omnivore > t.Scavenger).ToList();
+            if (tmpList.Count > 0)
+            {
+                float highestOmnivore = tmpList.Max(t => t.Omnivore);
+                List<Creature> creatures = gameData.Creatures.Where(t => t.IsOmnivore && t.Omnivore == highestOmnivore).ToList();
+
+                if (creatures.Count > 0)
+                {
+                    gameData.Focus = creatures[creatures.Count - 1];
+                    gameData.SetIndexPositionsForCreatures();
+                }
+            }
+        }
 
         MouseState mouseState;
         if (inputState.IsNewLeftMouseClick(out mouseState))

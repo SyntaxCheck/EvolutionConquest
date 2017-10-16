@@ -139,7 +139,7 @@ public class Creature : SpriteBase
     public const float HOT_TOLERANCE_INIT_MIN = 0;
     public const float HOT_TOLERANCE_INIT_MAX = 10;
     public const float ENERGY_INIT = 450;
-    public const int TICKS_BETWEEN_SIGHT_EVAL = 10;
+    public const int TICKS_BETWEEN_SIGHT_EVAL = 15;
     public const float EGG_CAMO_COST_MULTIPLIER = 10f; //Multiplier on the energy cost for laying the egg
 
     //public const string CREATURE_TABLE_NAME = "Creatures";
