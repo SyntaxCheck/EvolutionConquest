@@ -22,6 +22,7 @@ create table Creatures
 	FoodDigestionRate numeric(9,4) not null,
 	EggInterval numeric(9,4) not null,
 	EggIncubation numeric(9,4) not null,
+	EggIncubationActual numeric(9,4) not null,
 	EggCamo numeric(9,4) not null,
 	EggToxicity numeric(9,4) not null,
 	EggsCreatedTotal int not null,

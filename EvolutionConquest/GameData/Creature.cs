@@ -67,6 +67,7 @@ public class Creature : SpriteBase
     public int TicksSinceLastDigestedFood { get; set; } //The amount of Game Ticks since the last food was digested
     public float EggInterval { get; set; } //How ofter an egg can be output
     public float EggIncubation { get; set; } //How long it takes for the egg to hatch once created
+    public float EggIncubationActual { get; set; } //This is calculated based on their species level, if the creature is a herbavore add Herbavore * 10
     public float EggCamo { get; set; } //How well the egg is hidden from Scavengers
     public float EggToxicity { get; set; } //How toxic the egg is to other creatures
     public int EggsCreated { get; set; }
@@ -172,7 +173,7 @@ public class Creature : SpriteBase
         CalculatedIntercept = Vector2.Zero;
     }
 
-    public void InitNewCreature(Random rand, ref Names names, int speciesId, ref int creatureIdCtr)
+    public void InitNewCreature(Random rand, ref Names names, int speciesId, ref int creatureIdCtr, List<Creature> gameDataCreatures)
     {
         creatureIdCtr++;
         CreatureId = creatureIdCtr;
@@ -217,6 +218,18 @@ public class Creature : SpriteBase
         IsHerbavore = true;
         TicksInColdClimate = 0;
         TicksInHotClimate = 0;
+        EggIncubationActual = EggIncubation + (Herbavore * 10);
+
+        foreach (Creature c in gameDataCreatures)
+        {
+            if (IsCloseTo(this, c))
+            {
+                Species = c.Species;
+                SpeciesId = c.SpeciesId;
+                SpeciesStrain = c.BabySpeciesStrainCounter;
+                break;
+            }
+        }
     }
     public void AdvanceTick(Random rand)
     {
@@ -372,6 +385,7 @@ public class Creature : SpriteBase
             baby.IsCarnivore = false;
             baby.IsScavenger = false;
             baby.IsOmnivore = false;
+            baby.EggIncubationActual = baby.EggIncubation + (baby.Herbavore * 10);
         }
         else if (baby.Carnivore >= baby.Herbavore && baby.Carnivore >= baby.Scavenger && baby.Carnivore >= baby.Omnivore)
         {
@@ -379,6 +393,7 @@ public class Creature : SpriteBase
             baby.IsCarnivore = true;
             baby.IsScavenger = false;
             baby.IsOmnivore = false;
+            baby.EggIncubationActual = baby.EggIncubation + (baby.Carnivore * 10);
         }
         else if (baby.Scavenger >= baby.Herbavore && baby.Scavenger >= baby.Carnivore && baby.Scavenger >= baby.Omnivore)
         {
@@ -386,6 +401,7 @@ public class Creature : SpriteBase
             baby.IsCarnivore = false;
             baby.IsScavenger = true;
             baby.IsOmnivore = false;
+            baby.EggIncubationActual = baby.EggIncubation + (baby.Scavenger * 10);
         }
         else if (baby.Omnivore >= baby.Herbavore && baby.Omnivore >= baby.Carnivore && baby.Omnivore >= baby.Scavenger)
         {
@@ -393,6 +409,7 @@ public class Creature : SpriteBase
             baby.IsCarnivore = true;
             baby.IsScavenger = false;
             baby.IsOmnivore = true;
+            baby.EggIncubationActual = baby.EggIncubation + (baby.Omnivore * 10);
         }
 
         //Only iterate the Species/Strain if something that can Mutate has changed
@@ -406,27 +423,12 @@ public class Creature : SpriteBase
                     NewSpeciesId = gameDataCreatureList.Max(t => t.SpeciesId) + 1;
                     IsChangingSpecies = true;
                 }
-                baby.Ancestors.Add(Species);
-                baby.AncestorIds.Add(SpeciesId);
+
                 baby.Species = NewSpeciesName;
                 baby.SpeciesId = NewSpeciesId;
                 baby.SpeciesStrain = BabySpeciesStrainCounter;
-
-                #region RomanNumerals
-                ///Roman Numeral at the end of Species name does not work
-                //int romanNumeralIndex = baby.Species.IndexOf(' ');
-                //if (romanNumeralIndex > 0) //Increment Roman numeral of we Detect a space
-                //{
-                //    string romanNumeral = baby.Species.Substring(romanNumeralIndex + 1);
-                //    romanNumeral = Roman.To(Roman.From(romanNumeral) + 1);
-
-                //    baby.Species = baby.Species.Substring(0, romanNumeralIndex) + " " + romanNumeral;
-                //}
-                //else
-                //{
-                //    baby.Species = baby.Species + " II";
-                //}
-                #endregion
+                baby.Ancestors.Add(Species);
+                baby.AncestorIds.Add(SpeciesId);
             }
             else
             {
@@ -443,7 +445,7 @@ public class Creature : SpriteBase
 
         egg.Position = Position;
         egg.ElapsedTicks = 0;
-        egg.TicksTillHatched = (int)Math.Ceiling(EggIncubation);
+        egg.TicksTillHatched = (int)Math.Ceiling(EggIncubationActual);
         egg.Camo = EggCamo;
         egg.Creature = baby;
 
@@ -490,11 +492,12 @@ public class Creature : SpriteBase
         info.Add("Food: " + UndigestedFood);
         info.Add("Food Digested: " + DigestedFood);
         info.Add("Last Digested: " + Math.Round(TicksSinceLastDigestedFood / 10.0, 1).ToString());
-        info.Add("Food Digestion rate: " + Math.Round(FoodDigestion / 10.0, 1).ToString());
+        info.Add("Food Digestion Rate: " + Math.Round(FoodDigestion / 10.0, 1).ToString());
         info.Add("Lifetime Food: " + TotalFoodEaten);
         info.Add(" ");
         info.Add("Egg Interval: " + Math.Round(EggInterval / 10.0, 1).ToString());
         info.Add("Egg Incubation: " + Math.Round(EggIncubation / 10.0, 1).ToString());
+        info.Add("Egg Incubation Actual: " + Math.Round(EggIncubationActual / 10.0, 1).ToString());
         info.Add("Egg Camo: " + EggCamo);
         info.Add("Egg Toxicity: " + EggToxicity);
         info.Add("Last Egg: " + Math.Round(TicksSinceLastEgg / 10.0, 1).ToString());
@@ -545,6 +548,7 @@ public class Creature : SpriteBase
             "FoodDigestionRate," +
             "EggInterval," +
             "EggIncubation," +
+            "EggIncubationActual," +
             "EggCamo," +
             "EggToxicity," +
             "EggsCreatedTotal," +
@@ -579,6 +583,7 @@ public class Creature : SpriteBase
         creatureSql += Math.Round(FoodDigestion, 4) + ",";
         creatureSql += Math.Round(EggInterval, 4) + ",";
         creatureSql += Math.Round(EggIncubation, 4) + ",";
+        creatureSql += Math.Round(EggIncubationActual, 4) + ",";
         creatureSql += Math.Round(EggCamo, 4) + ",";
         creatureSql += Math.Round(EggToxicity, 4) + ",";
         creatureSql += EggsCreated + ",";
@@ -693,6 +698,40 @@ public class Creature : SpriteBase
             return false;
 
         return true;
+    }
+    private bool IsCloseTo(Creature compareCreature1, Creature compareCreature2)
+    {
+        float differenceAmount = 0f;
+
+        if (compareCreature1.IsHerbavore == compareCreature2.IsHerbavore && compareCreature1.IsCarnivore == compareCreature2.IsCarnivore && compareCreature1.IsScavenger == compareCreature2.IsScavenger && compareCreature1.IsOmnivore == compareCreature2.IsOmnivore)
+        {
+            differenceAmount += Math.Abs(compareCreature1.EggCamo - compareCreature2.EggCamo);
+            differenceAmount += Math.Abs((compareCreature1.EggIncubation / 10) - (compareCreature2.EggIncubation / 10));
+            differenceAmount += Math.Abs((compareCreature1.EggInterval / 10) - (compareCreature2.EggInterval / 10));
+            differenceAmount += Math.Abs(compareCreature1.EggToxicity - compareCreature2.EggToxicity);
+            differenceAmount += Math.Abs((compareCreature1.FoodDigestion / 10) - (compareCreature2.FoodDigestion / 10));
+            differenceAmount += Math.Abs(compareCreature1.Speed - compareCreature2.Speed);
+            differenceAmount += Math.Abs((compareCreature1.Lifespan / 10) - (compareCreature2.Lifespan / 10));
+            differenceAmount += Math.Abs(compareCreature1.Sight - compareCreature2.Sight);
+            differenceAmount += Math.Abs(compareCreature1.Attraction - compareCreature2.Attraction);
+            differenceAmount += Math.Abs(compareCreature1.Camo - compareCreature2.Camo);
+            differenceAmount += Math.Abs(compareCreature1.Cloning - compareCreature2.Cloning);
+            differenceAmount += Math.Abs(compareCreature1.ColdClimateTolerance - compareCreature2.ColdClimateTolerance);
+            differenceAmount += Math.Abs(compareCreature1.HotClimateTolerance - compareCreature2.HotClimateTolerance);
+            differenceAmount += Math.Abs(compareCreature1.Herbavore - compareCreature2.Herbavore);
+            differenceAmount += Math.Abs(compareCreature1.Carnivore - compareCreature2.Carnivore);
+            differenceAmount += Math.Abs(compareCreature1.Omnivore - compareCreature2.Omnivore);
+            differenceAmount += Math.Abs(compareCreature1.Scavenger - compareCreature2.Scavenger);
+        }
+        else
+        {
+            return false;
+        }
+
+        if (differenceAmount < 10)
+            return true;
+
+        return false;
     }
     private List<string> CopyAncestorList(List<string> toCopyList)
     {

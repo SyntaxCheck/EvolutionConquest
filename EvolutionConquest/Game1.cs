@@ -17,8 +17,6 @@ namespace EvolutionConquest
         private InputState _inputState;
         private Player _player;
         private SpriteFont _diagFont;
-        private SpriteFont _panelHeaderFont;
-        private SpriteFont _foodFont;
         private DatabaseConnectionSettings _dbConnectionSettings;
         private ConnectionManager _connectionManager;
         private int _diagTextHeight;
@@ -29,6 +27,9 @@ namespace EvolutionConquest
         private TimeSpan _resetTimeSpan;
         //Game variables
         private GameData _gameData;
+        private SpriteFont _panelHeaderFont;
+        private SpriteFont _foodFont;
+        private SpriteFont _mapStatisticsFont;
         private Texture2D _whitePixel;
         private Texture2D _herbavoreTexture;
         private Texture2D _herbavoreSightTexture;
@@ -40,6 +41,10 @@ namespace EvolutionConquest
         private Texture2D _omnivoreSightTexture;
         private Texture2D _foodTexture;
         private Texture2D _eggTexture;
+        private Texture2D _populationTexture;
+        private Texture2D _deadCreaturesTexture;
+        private Texture2D _foodOnMapTexture;
+        private Texture2D _eggsOnMapTexture;
         private Random _rand;
         private int _gameRandSeed;
         private int _sessionID;
@@ -49,7 +54,6 @@ namespace EvolutionConquest
         private Names _names;
         private Borders _borders;
         private List<string> _creatureStats;
-        private int _uniqueSpeciesCount;
         private double _elapsedSecondsSinceTick;
         private double _elapsedTimeSinceFoodGeneration;
         private float _currentTicksPerSecond = 30;
@@ -69,6 +73,7 @@ namespace EvolutionConquest
         private const float TICKS_PER_SECOND = 30;
         private const int BORDER_WIDTH = 10;
         private const int GRID_CELL_SIZE = 50; //Seems to be the sweet spot for a 5,000 x 5,000 map based on the texture sizes we have so far
+        private const float HUD_ICON_SCALE = 0.375f;
         private const float INIT_FOOD_RATIO = 0.0005f;
         private const float INIT_STARTING_CREATURE_RATIO = 0.00005f;
         //private const float INIT_FOOD_RATIO = 0.01f; //Performance test value
@@ -118,8 +123,14 @@ namespace EvolutionConquest
             // Create a new SpriteBatch, which can be used to draw textures.
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+            _populationTexture = Content.Load<Texture2D>("population");
+            _deadCreaturesTexture = Content.Load<Texture2D>("dead");
+            _foodOnMapTexture = Content.Load<Texture2D>("food");
+            _eggsOnMapTexture = Content.Load<Texture2D>("eggs");
+
             _foodFont = Content.Load<SpriteFont>("FoodFont");
             _panelHeaderFont = Content.Load<SpriteFont>("ArialBlack");
+            _mapStatisticsFont = Content.Load<SpriteFont>("BEBAS___");
             _diagFont = Content.Load<SpriteFont>("DiagnosticsFont");
             _diagTextHeight = (int)Math.Ceiling(_diagFont.MeasureString("ABCDEFGHIJKLMNOPQRSTUVWXYZ[]").Y);
             _tickSeconds = TICKS_PER_SECOND;
@@ -148,7 +159,7 @@ namespace EvolutionConquest
             _scavengerTexture = _creatureGenerator.CreateCreatureScavengerTexture(_graphics.GraphicsDevice, false);
             _scavengerSightTexture = _creatureGenerator.CreateCreatureScavengerTexture(_graphics.GraphicsDevice, true);
             _omnivoreTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, false);
-            _omnivoreSightTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, false);
+            _omnivoreSightTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, true);
             _foodTexture = _foodGenerator.CreateFoodTexture(_graphics.GraphicsDevice);
             _eggTexture = _eggGenerator.CreateEggTexture(_graphics.GraphicsDevice, Color.Black, Color.White);
 
@@ -453,9 +464,12 @@ namespace EvolutionConquest
         {
             _elapsedTicksSinceSecondProcessing = 0;
 
-            //For the HUD calculate the unique number of species. Do this in the "Per Second" code so that it is not a big performance hit
-            _uniqueSpeciesCount = _gameData.GetUniqueSpeciesCount();
+            UpdateOffTickIntervalGraphs(gameTime);
 
+            UpdateOffTickIntervalMapStats(gameTime);
+        }
+        private void UpdateOffTickIntervalGraphs(GameTime gameTime)
+        {
             //Generate Graph data
             _gameData.CalculateChartData(); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
 
@@ -492,6 +506,10 @@ namespace EvolutionConquest
                     }
                 }
             }
+        }
+        private void UpdateOffTickIntervalMapStats(GameTime gameTime)
+        {
+            _gameData.CalculateMapStatistics();
         }
         private void UpdateOffTickHandleCollisionsAndMovement(GameTime gameTime)
         {
@@ -1045,7 +1063,7 @@ namespace EvolutionConquest
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, null);
 
             DrawCreatureStatsPanel();
-            DrawMapStatisctics();
+            DrawMapStatistics();
             DrawControlsPanel();
             DrawChartBorder();
             DrawFPS();
@@ -1060,32 +1078,62 @@ namespace EvolutionConquest
                 DrawPanelWithText(_panelHeaderFont, "Creature Statistics", _diagFont, _gameData.Focus.GetCreatureInformation(), Global.Anchor.LeftCenter, (int)Math.Ceiling(_diagFont.MeasureString("Position: {X:-100.000000, Y:-100.000000}").X), 0, 20);
             }
         }
-        private void DrawMapStatisctics()
+        private void DrawMapStatistics()
         {
-            string deadCreatures = String.Empty;
+            int topBuffer = 10;
+            int topBufferNumers = 13;
+            int spacing = 5;
+            int startingPos = (int)(_graphics.PreferredBackBufferWidth * 0.35);
+            int currentPos = startingPos;
+            int menuSpacing = 63;
 
-            if (_gameData.DeadCreatures.Count >= 1000)
-            {
-                deadCreatures = Math.Round(_gameData.DeadCreatures.Count / 1000.0, 2).ToString("#,##0.00") + "k";
-            }
-            else if (_gameData.DeadCreatures.Count >= 1000000)
-            {
-                deadCreatures = Math.Round(_gameData.DeadCreatures.Count / 1000000.0, 2).ToString("#,##0.00") + "m";
-            }
-            else
-            {
-                deadCreatures = _gameData.DeadCreatures.Count.ToString("#,##0");
-            }
+            //Population/Alive creatures
+            _spriteBatch.Draw(_populationTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_populationTexture.Width * HUD_ICON_SCALE) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.AliveCreatures.ToString("#,##0") + "(" + _gameData.MapStatistics.UniqueSpecies.ToString("#,##0") + ")", new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing + (int)(menuSpacing * .5);
 
-            string mapStats = "Alive Creatures: " + _gameData.Creatures.Count.ToString("#,##0") + ", Unique Species: " +
-                _uniqueSpeciesCount.ToString("#,##0") + ", Dead Creatures: " + deadCreatures + ", Eggs: " +
-                _gameData.Eggs.Count.ToString("#,##0") + ", Map Food: " + _gameData.Food.Count.ToString("#,##0");
+            //Dead creatures
+            _spriteBatch.Draw(_deadCreaturesTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_deadCreaturesTexture.Width * HUD_ICON_SCALE) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.DeadCreatures.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
 
-            Vector2 textSize = _diagFont.MeasureString(mapStats);
-            Vector2 drawPos = new Vector2((_graphics.PreferredBackBufferWidth / 2) - (_diagFont.MeasureString(mapStats).X / 2), 10);
+            //Eggs on map
+            _spriteBatch.Draw(_eggsOnMapTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_eggsOnMapTexture.Width * HUD_ICON_SCALE) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.EggsOnMap.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
 
-            _spriteBatch.Draw(_whitePixel, new Rectangle((int)drawPos.X, (int)drawPos.Y, (int)textSize.X, (int)textSize.Y), Color.White);
-            _spriteBatch.DrawString(_diagFont, mapStats, drawPos, Color.Black);//, 0f, Vector2.Zero, SPRITE_FONT_SCALE, SpriteEffects.None, 1f);
+            //Food on map
+            _spriteBatch.Draw(_foodOnMapTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_foodOnMapTexture.Width * HUD_ICON_SCALE) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.FoodOnMap.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
+
+            //Percent Herbavore
+            _spriteBatch.Draw(_herbavoreSightTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, 2, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_herbavoreTexture.Width * 2f) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.PercentHerbavore.ToString("#0%"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
+
+            //Percent Carnivore
+            _spriteBatch.Draw(_carnivoreSightTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, 2, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_carnivoreTexture.Width * 2f) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.PercentCarnivore.ToString("#0%"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
+
+            //Percent Scavenger
+            _spriteBatch.Draw(_scavengerSightTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, 2, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_scavengerTexture.Width * 2f) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.PercentScavenger.ToString("#0%"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
+
+            //Percent Omnivore
+            _spriteBatch.Draw(_omnivoreSightTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, 2, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_omnivoreTexture.Width * 2f) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.PercentOmnivore.ToString("#0%"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
         }
         private void DrawControlsPanel()
         {
@@ -1299,7 +1347,7 @@ namespace EvolutionConquest
         private void SpawnStartingCreature()
         {
             Creature creature = new Creature();
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
             creature.Texture = DetermineCreatureTexture(creature);
             creature.Position = new Vector2(_rand.Next(creature.Texture.Width, Global.WORLD_SIZE - creature.Texture.Width), _rand.Next(creature.Texture.Height, Global.WORLD_SIZE - creature.Texture.Height));
             creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
@@ -1369,7 +1417,7 @@ namespace EvolutionConquest
             {
                 foreach (Creature f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Creatures)
                 {
-                    if (f.SpeciesId != creature.SpeciesId && (!f.IsCarnivore || creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Carnivore))
+                    if (f.SpeciesId != creature.SpeciesId && (!f.IsCarnivore || (!creature.IsOmnivore && creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Carnivore)))
                     {
                         float tmpDistance = 9999999;
                         //Vector2 impactPosition = CollisionDetection.CalculateMovingInterceptPoint(creature.Position, creature.Direction, creature.Speed, f.Position, f.Direction, f.Speed, ref tmpDistance);
@@ -1439,7 +1487,7 @@ namespace EvolutionConquest
         private void SpawnTwoTestCreaturesWithInterceptPaths()
         {
             Creature creature = new Creature();
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
@@ -1459,7 +1507,7 @@ namespace EvolutionConquest
             _gameData.Creatures.Add(creature);
 
             Creature creature2 = new Creature();
-            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
             _speciesIdCounter++;
             creature2.Species = "Cheater2";
             creature2.OriginalSpecies = "Cheater2";
@@ -1488,7 +1536,7 @@ namespace EvolutionConquest
         private void SpawnOneTestCarnivore()
         {
             Creature creature = new Creature();
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
@@ -1517,7 +1565,7 @@ namespace EvolutionConquest
         private void SpawnOneTestScavenger()
         {
             Creature creature = new Creature();
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr);
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";

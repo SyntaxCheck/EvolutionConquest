@@ -1,9 +1,11 @@
 ﻿using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 public class GameData
 {
+    public MapStatistics MapStatistics { get; set; } //Map stats for the top bar on the HUD
     public List<Creature> Creatures { get; set; } //List of creatures on the map
     public List<Creature> DeadCreatures { get; set; } //Used for writing stats at the end
     public List<Egg> Eggs { get; set; } //Eggs on the map
@@ -24,6 +26,7 @@ public class GameData
 
     public GameData()
     {
+        MapStatistics = new MapStatistics();
         ChartData = new List<SpeciesToCount>();
         ChartDataTop = new List<SpeciesToCount>();
         Creatures = new List<Creature>();
@@ -40,6 +43,31 @@ public class GameData
         ShowDebugData = false;
     }
 
+    public void CalculateMapStatistics()
+    {
+        MapStatistics.AliveCreatures = Creatures.Count;
+        MapStatistics.DeadCreatures = DeadCreatures.Count;
+        MapStatistics.FoodOnMap = Food.Count;
+        MapStatistics.EggsOnMap = Eggs.Count;
+        MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentOmnivore = Math.Round((double)Creatures.Where(o => o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.UniqueSpecies = GetUniqueSpeciesCount();
+
+        double percentTotal = MapStatistics.PercentHerbavore + MapStatistics.PercentCarnivore + MapStatistics.PercentScavenger + MapStatistics.PercentOmnivore;
+        if (percentTotal != 1)
+        {
+            if (percentTotal > 1)
+            {
+                MapStatistics.PercentHerbavore = MapStatistics.PercentHerbavore - (percentTotal - 1);
+            }
+            else
+            {
+                MapStatistics.PercentHerbavore = MapStatistics.PercentHerbavore + (1 - percentTotal);
+            }
+        }
+    }
     public int GetUniqueSpeciesCount()
     {
         return Creatures.Select(o => o.Species).Distinct().Count();

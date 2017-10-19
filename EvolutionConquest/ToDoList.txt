@@ -1,5 +1,4 @@
-﻿Re-work top information panel
-	Include counts for Herbavore, Carnavores, Scavengers and Omnivores
-Add "Markers" to locate creatures
+﻿Add "Markers" to locate creatures
 	Also add "Markers" toggle for each type of creatures
 New graph types, bar graph for creature type
+Make climates not a straight line

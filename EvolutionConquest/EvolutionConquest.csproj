@@ -61,6 +61,7 @@
     <Compile Include="GameData\FoodShapeGenerator.cs" />
     <Compile Include="Framework\GameData.cs" />
     <Compile Include="GameData\GridData.cs" />
+    <Compile Include="GameData\MapStatistics.cs" />
     <Compile Include="GameData\Names.cs" />
     <Compile Include="GameData\Roman.cs" />
     <Compile Include="GameData\SpeciesDistinct.cs" />
