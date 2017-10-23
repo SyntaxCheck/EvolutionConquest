@@ -31,6 +31,12 @@ namespace EvolutionConquest
         private SpriteFont _foodFont;
         private SpriteFont _mapStatisticsFont;
         private Texture2D _whitePixel;
+        private Texture2D _blankMarker;
+        private Texture2D _eggMarker;
+        private Texture2D _eggMarkerGreen;
+        private Texture2D _eggMarkerRed;
+        private Texture2D _eggMarkerPurple;
+        private Texture2D _eggMarkerYellow;
         private Texture2D _herbavoreTexture;
         private Texture2D _herbavoreSightTexture;
         private Texture2D _carnivoreTexture;
@@ -127,6 +133,12 @@ namespace EvolutionConquest
             _deadCreaturesTexture = Content.Load<Texture2D>("dead");
             _foodOnMapTexture = Content.Load<Texture2D>("food");
             _eggsOnMapTexture = Content.Load<Texture2D>("eggs");
+            _blankMarker = Content.Load<Texture2D>("BlankMarker");
+            _eggMarker = Content.Load<Texture2D>("EggMarker");
+            _eggMarkerGreen = Content.Load<Texture2D>("EggMarkerGreen");
+            _eggMarkerRed = Content.Load<Texture2D>("EggMarkerRed");
+            _eggMarkerPurple = Content.Load<Texture2D>("EggMarkerPurple");
+            _eggMarkerYellow = Content.Load<Texture2D>("EggMarkerYellow");
 
             _foodFont = Content.Load<SpriteFont>("FoodFont");
             _panelHeaderFont = Content.Load<SpriteFont>("ArialBlack");
@@ -225,6 +237,10 @@ namespace EvolutionConquest
             _controlsListText.Add("[PageUp][PageDown] Cycle Creatures");
             _controlsListText.Add("[Shift] + [PageUp][PageDown] Cycle Species");
             _controlsListText.Add("[Ctrl] + [PageUp][PageDown] Cycle Creatures");
+            _controlsListText.Add("[F4] Toggle Herbavore Marker");
+            _controlsListText.Add("[F5] Toggle Carnivore Marker");
+            _controlsListText.Add("[F6] Toggle Scavenger Marker");
+            _controlsListText.Add("[F7] Toggle Omnivore Marker");
             _controlsListText.Add("[F8] Toggle Debug Data");
             _controlsListText.Add("[F9] Toggle Food Strength");
             _controlsListText.Add("[F10] Toggle Creature Statistics");
@@ -1062,6 +1078,7 @@ namespace EvolutionConquest
         {
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, null);
 
+            DrawMarkers();
             DrawCreatureStatsPanel();
             DrawMapStatistics();
             DrawControlsPanel();
@@ -1159,6 +1176,78 @@ namespace EvolutionConquest
         {
             //_spriteBatch.DrawString(_diagFont, "FPS: " + _fps + "   " + (int)_totalElapsedSeconds, new Vector2(5, 5), Color.Black);
             _spriteBatch.DrawString(_diagFont, "FPS: " + _fps, new Vector2(2, 2), Color.Black);
+        }
+        private void DrawMarkers()
+        {
+            //Need to draw this with World coordinates but HUD Size
+            float scale = 0.5f;
+            if (_gameData.EggMarkers)
+            {
+                for (int i = 0; i < _gameData.Eggs.Count; i++)
+                {
+                    Texture2D texture;
+                    if (_gameData.Eggs[i].Creature.IsOmnivore)
+                    {
+                        texture = _eggMarkerYellow;
+                    }
+                    else if (_gameData.Eggs[i].Creature.IsScavenger)
+                    {
+                        texture = _eggMarkerPurple;
+                    }
+                    else if (_gameData.Eggs[i].Creature.IsCarnivore)
+                    {
+                        texture = _eggMarkerRed;
+                    }
+                    else if (_gameData.Eggs[i].Creature.IsHerbavore)
+                    {
+                        texture = _eggMarkerGreen;
+                    }
+                    else
+                    {
+                        texture = _eggMarker;
+                    }
+
+                    Vector2 position = Vector2.Transform(new Vector2(_gameData.Eggs[i].Position.X, _gameData.Eggs[i].Position.Y - (_gameData.Eggs[i].Texture.Height / 2)), (Global.Camera.TranslationMatrix));
+
+                    position.X = position.X - ((texture.Width * scale) / 2);
+                    position.Y = position.Y - (texture.Height * scale);
+
+                    _spriteBatch.Draw(texture, position, null, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 1);
+                }
+            }
+            if (_gameData.HerbavoreMarkers || _gameData.CarnivoreMarkers || _gameData.ScavengerMarkers || _gameData.OmnivoreMarkers)
+            {
+                for (int i = 0; i < _gameData.Creatures.Count; i++)
+                {
+                    Color? markerColor = null;
+                    if (_gameData.OmnivoreMarkers && _gameData.Creatures[i].IsOmnivore)
+                    {
+                        markerColor = Color.Yellow;
+                    }
+                    else if (_gameData.HerbavoreMarkers && _gameData.Creatures[i].IsHerbavore)
+                    {
+                        markerColor = Color.ForestGreen;
+                    }
+                    else if (_gameData.CarnivoreMarkers && _gameData.Creatures[i].IsCarnivore)
+                    {
+                        markerColor = Color.Red;
+                    }
+                    else if (_gameData.ScavengerMarkers && _gameData.Creatures[i].IsScavenger)
+                    {
+                        markerColor = Color.Purple;
+                    }
+
+                    if (markerColor != null)
+                    {
+                        Vector2 position = Vector2.Transform(new Vector2(_gameData.Creatures[i].Position.X, _gameData.Creatures[i].Position.Y - (_gameData.Creatures[i].Texture.Height / 2)), (Global.Camera.TranslationMatrix));
+
+                        position.X = position.X - ((_blankMarker.Width * scale) / 2);
+                        position.Y = position.Y - (_blankMarker.Height * scale);
+
+                        _spriteBatch.Draw(_blankMarker, position, null, (Color)markerColor, 0f, Vector2.Zero, scale, SpriteEffects.None, 1);
+                    }
+                }
+            }
         }
         private void DrawDebugDataHUD()
         {

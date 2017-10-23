@@ -40,5 +40,25 @@ public class Player
         {
             gameData.ShowDebugData = !gameData.ShowDebugData;
         }
+        if (inputState.IsNewKeyPress(Keys.F3, controllingPlayer, out playerIndex))
+        {
+            gameData.EggMarkers = !gameData.EggMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F4, controllingPlayer, out playerIndex))
+        {
+            gameData.HerbavoreMarkers = !gameData.HerbavoreMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F5, controllingPlayer, out playerIndex))
+        {
+            gameData.CarnivoreMarkers = !gameData.CarnivoreMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F6, controllingPlayer, out playerIndex))
+        {
+            gameData.ScavengerMarkers = !gameData.ScavengerMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F7, controllingPlayer, out playerIndex))
+        {
+            gameData.OmnivoreMarkers = !gameData.OmnivoreMarkers;
+        }
     }
 }

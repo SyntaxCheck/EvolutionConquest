@@ -18,6 +18,11 @@ public class GameData
     public bool ShowChart { get; set; }
     public bool ShowControls { get; set; }
     public bool HighlightSpecies { get; set; }
+    public bool EggMarkers { get; set; }
+    public bool HerbavoreMarkers { get; set; }
+    public bool CarnivoreMarkers { get; set; }
+    public bool ScavengerMarkers { get; set; }
+    public bool OmnivoreMarkers { get; set; }
     public bool ShowCreatureStats { get; set; }
     public bool ShowFoodStrength { get; set; }
     public bool ShowDebugData { get; set; }
@@ -38,6 +43,10 @@ public class GameData
         ShowChart = true;
         ShowControls = true;
         HighlightSpecies = false;
+        HerbavoreMarkers = false;
+        CarnivoreMarkers = false;
+        ScavengerMarkers = false;
+        OmnivoreMarkers = false;
         ShowCreatureStats = true;
         ShowFoodStrength = false;
         ShowDebugData = false;
