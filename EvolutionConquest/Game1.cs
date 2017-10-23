@@ -69,12 +69,13 @@ namespace EvolutionConquest
         private Chart _chart;
         private List<string> _controlsListText;
         private int _creatureIdCtr;
+        private int _elapsedTicksForInitialFoodUpgrade;
         private int _elapsedTicksSinceFoodUpgrade;
         private int _maxFoodLevel;
         private int _climateHeight;
         private bool _writeStats;
         //Constants
-        private const int SESSION_NUMBER = 16;
+        private const int SESSION_NUMBER = 2;
         private const float SPRITE_FONT_SCALE = 0.5f;
         private const float TICKS_PER_SECOND = 30;
         private const int BORDER_WIDTH = 10;
@@ -85,6 +86,7 @@ namespace EvolutionConquest
         //private const float INIT_FOOD_RATIO = 0.01f; //Performance test value
         //private const float INIT_STARTING_CREATURE_RATIO = 0.0005f; //Performance test value
         private const float FOOD_GENERATION_INTERVAL_SECONDS = 0.01f;
+        private const int TICKS_TILL_INITIAL_FOOD_UPGRADE = 54000; //Half hour assuming 30 ticks a second
         private const int TICKS_TILL_FOOD_UPGRADE = 4500;
         private const int FOOD_UPGRADE_AMOUNT = 1;
         private const int FOOD_UPGRADE_CHANCE_PERCENT = 20; //Between 0-100
@@ -95,7 +97,7 @@ namespace EvolutionConquest
         private const int CARNIVORE_LEVEL_BUFFER = 5; //How many levels higher in the Carnivore propery the carnivore has to be in order to eat the creature. A level 15 carnivore can eat any carnivore with a Carnivore level below 10 (Assuming the constant was set to 5)
         //GamePlay feature toggles
         private const bool ENABLE_DEBUG_DATA = false;
-        private const bool ENABLE_FOOD_UPGRADES = false;
+        private const bool ENABLE_FOOD_UPGRADES = true;
         private const bool ENABLE_ENERGY_DEATH = true;
         private const bool ENABLE_SIGHT = true;
         private const bool ENABLE_CLIMATE = true;
@@ -156,7 +158,7 @@ namespace EvolutionConquest
             _rand = new Random();
             _sessionID = SESSION_NUMBER;
             //_sessionID = _rand.Next(0, int.MaxValue); //We could have just used the Seed since it is random but I might implement the ability to choose seed at a later time
-            _rand = new Random(1);
+            //_rand = new Random(1);
             _gameRandSeed = _rand.Next(0, int.MaxValue); //Use the initial random class to set a seed
             _rand = new Random(_gameRandSeed); //Re-instantiate the _rand variable with our seed
             _names = new Names();
@@ -288,7 +290,7 @@ namespace EvolutionConquest
 
             UpdateHandleInputs(gameTime);
 
-            if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < 60)
+            if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < 120)
             {
                 _tickSeconds = 1 / _currentTicksPerSecond;
 
@@ -442,16 +444,20 @@ namespace EvolutionConquest
         {
             if (ENABLE_FOOD_UPGRADES)
             {
-                if (_maxFoodLevel < MAX_FOOD_LEVEL)
+                _elapsedTicksForInitialFoodUpgrade++;
+                if (_elapsedTicksForInitialFoodUpgrade >= TICKS_TILL_INITIAL_FOOD_UPGRADE)
                 {
-                    _elapsedTicksSinceFoodUpgrade++;
-                    if (_elapsedTicksSinceFoodUpgrade >= TICKS_TILL_FOOD_UPGRADE)
+                    if (_maxFoodLevel < MAX_FOOD_LEVEL)
                     {
-                        //Chance to increase the food level
-                        if (_rand.Next(0, 100) <= FOOD_UPGRADE_CHANCE_PERCENT)
+                        _elapsedTicksSinceFoodUpgrade++;
+                        if (_elapsedTicksSinceFoodUpgrade >= TICKS_TILL_FOOD_UPGRADE)
                         {
-                            _elapsedTicksSinceFoodUpgrade = 0;
-                            _maxFoodLevel += FOOD_UPGRADE_AMOUNT;
+                            //Chance to increase the food level
+                            if (_rand.Next(0, 100) <= FOOD_UPGRADE_CHANCE_PERCENT)
+                            {
+                                _elapsedTicksSinceFoodUpgrade = 0;
+                                _maxFoodLevel += FOOD_UPGRADE_AMOUNT;
+                            }
                         }
                     }
                 }
@@ -607,29 +613,31 @@ namespace EvolutionConquest
                         {
                             for (int k = (_gameData.MapGridData[p.X, p.Y].Creatures.Count - 1); k >= 0; k--)
                             {
-                                if (_gameData.Creatures[i].SpeciesId != _gameData.MapGridData[p.X, p.Y].Creatures[k].SpeciesId && (!_gameData.MapGridData[p.X, p.Y].Creatures[k].IsCarnivore || (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Carnivore))
+                                if (_gameData.Creatures[i].SpeciesId != _gameData.MapGridData[p.X, p.Y].Creatures[k].SpeciesId)
                                 {
-                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Creatures[k].Bounds))
-                                    //if(_gameData.Creatures[i].Position.X + (_gameData.Creatures[i].Texture.Width / 2) >= _gameData.MapGridData[p.X, p.Y].Creatures[k].Position.X - (_gameData.MapGridData[p.X, p.Y].Creatures[k].Texture.Width / 2))
+                                    if ((_gameData.MapGridData[p.X, p.Y].Creatures[k].IsHerbavore || (_gameData.MapGridData[p.X, p.Y].Creatures[k].IsScavenger && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Scavenger) || (!_gameData.Creatures[i].IsOmnivore && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Carnivore)))
                                     {
-                                        Creature tmpCreature = _gameData.MapGridData[p.X, p.Y].Creatures[k];
+                                        if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Creatures[k].Bounds))
+                                        {
+                                            Creature tmpCreature = _gameData.MapGridData[p.X, p.Y].Creatures[k];
 
-                                        //Get one food for eating the creature
-                                        _gameData.Creatures[i].UndigestedFood++;
-                                        _gameData.Creatures[i].TotalFoodEaten++;
-                                        _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                                            //Get one food for eating the creature
+                                            _gameData.Creatures[i].UndigestedFood++;
+                                            _gameData.Creatures[i].TotalFoodEaten++;
+                                            _gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
 
-                                        //Carnivores over performing so remove this advantage
-                                        ////Get all of the undigested food from the creature along with the Energy that goes along with that
-                                        //_gameData.Creatures[i].UndigestedFood += tmpCreature.UndigestedFood;
-                                        //_gameData.Creatures[i].TotalFoodEaten += tmpCreature.UndigestedFood;
-                                        //_gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT * tmpCreature.UndigestedFood;
+                                            //Carnivores over performing so remove this advantage
+                                            ////Get all of the undigested food from the creature along with the Energy that goes along with that
+                                            //_gameData.Creatures[i].UndigestedFood += tmpCreature.UndigestedFood;
+                                            //_gameData.Creatures[i].TotalFoodEaten += tmpCreature.UndigestedFood;
+                                            //_gameData.Creatures[i].Energy += FOOD_ENERGY_AMOUNT * tmpCreature.UndigestedFood;
 
-                                        tmpCreature.IsAlive = false;
-                                        tmpCreature.DeathCause = "Eaten";
+                                            tmpCreature.IsAlive = false;
+                                            tmpCreature.DeathCause = "Eaten";
 
-                                        deadCreaturesToRemove.Add(tmpCreature);
-                                        _gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
+                                            deadCreaturesToRemove.Add(tmpCreature);
+                                            _gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
+                                        }
                                     }
                                 }
                             }
@@ -1385,6 +1393,7 @@ namespace EvolutionConquest
             _elapsedSeconds = 0.0;
             _totalElapsedSeconds = 0.0;
             _creatureIdCtr = 0;
+            _elapsedTicksForInitialFoodUpgrade = 0;
             _elapsedTicksSinceFoodUpgrade = 0;
             _maxFoodLevel = 2;
             _climateHeight = (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
@@ -1506,22 +1515,25 @@ namespace EvolutionConquest
             {
                 foreach (Creature f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Creatures)
                 {
-                    if (f.SpeciesId != creature.SpeciesId && (!f.IsCarnivore || (!creature.IsOmnivore && creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Carnivore)))
+                    if (f.SpeciesId != creature.SpeciesId)
                     {
-                        float tmpDistance = 9999999;
-                        //Vector2 impactPosition = CollisionDetection.CalculateMovingInterceptPoint(creature.Position, creature.Direction, creature.Speed, f.Position, f.Direction, f.Speed, ref tmpDistance);
-                        Vector2? impactPosition = CollisionDetection.FindCollisionPoint(f.Position, f.Direction * f.Speed, creature.Position, creature.Speed);
-                        tmpDistance = Vector2.Distance(creature.Position, (Vector2)impactPosition);
-
-                        if (impactPosition != null && !float.IsNaN(impactPosition.Value.X))
+                        //Can eat all herbavores. If we are a true Carnivore we can eat other carnivores. We can eat all Scavengers lower than us.
+                        if (f.IsHerbavore || (f.IsScavenger && creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Scavenger) || (!creature.IsOmnivore && f.IsCarnivore && creature.Carnivore - CARNIVORE_LEVEL_BUFFER > f.Carnivore))
                         {
-                            if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
+                            float tmpDistance = 9999999;
+                            Vector2? impactPosition = CollisionDetection.FindCollisionPoint(f.Position, f.Direction * f.Speed, creature.Position, creature.Speed);
+                            tmpDistance = Vector2.Distance(creature.Position, (Vector2)impactPosition);
+
+                            if (impactPosition != null && !float.IsNaN(impactPosition.Value.X))
                             {
-                                if (tmpDistance < distance)
+                                if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
                                 {
-                                    foundPrey = true;
-                                    closest = (Vector2)impactPosition;
-                                    distance = tmpDistance;
+                                    if (tmpDistance < distance)
+                                    {
+                                        foundPrey = true;
+                                        closest = (Vector2)impactPosition;
+                                        distance = tmpDistance;
+                                    }
                                 }
                             }
                         }

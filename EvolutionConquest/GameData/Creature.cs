@@ -139,7 +139,7 @@ public class Creature : SpriteBase
     public const float COLD_TOLERANCE_INIT_MAX = 10;
     public const float HOT_TOLERANCE_INIT_MIN = 0;
     public const float HOT_TOLERANCE_INIT_MAX = 10;
-    public const float ENERGY_INIT = 450;
+    public const float ENERGY_INIT = 425;
     public const int TICKS_BETWEEN_SIGHT_EVAL = 15;
     public const float EGG_CAMO_COST_MULTIPLIER = 10f; //Multiplier on the energy cost for laying the egg
 
@@ -353,7 +353,7 @@ public class Creature : SpriteBase
         baby.TicksSinceLastDigestedFood = 0;
         baby.TicksSinceLastEgg = 0;
         baby.ElapsedTicks = 0;
-        baby.Energy = ENERGY_INIT; //No mutation chance on energy
+        baby.Energy = ENERGY_INIT + (GetCreatureLevel() * 10); //No mutation chance on energy
         baby.TicksSinceLastVisionCheck = 0;
         baby.TicksBetweenVisionChecks = TicksBetweenVisionChecks;
         baby.TicksInColdClimate = 0;
@@ -626,6 +626,27 @@ public class Creature : SpriteBase
             baseEnergyLost += Camo * EGG_CAMO_COST_MULTIPLIER;
         }
         Energy -= baseEnergyLost;
+    }
+    public float GetCreatureLevel()
+    {
+        if (IsOmnivore)
+        {
+            return Omnivore;
+        }
+        else if (IsHerbavore)
+        {
+            return Herbavore;
+        }
+        else if (IsCarnivore)
+        {
+            return Carnivore;
+        }
+        else if (IsScavenger)
+        {
+            return Scavenger;
+        }
+
+        return 0;
     }
 
     //Helper functions

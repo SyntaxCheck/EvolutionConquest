@@ -144,13 +144,15 @@ public class Camera
     // Clamp the camera so it never leaves the visible area of the map.
     private Vector2 MapClampedPosition(Vector2 position)
     {
+        int clampOverrage = 1000;
+
         var cameraMax = new Vector2(
-            Global.WORLD_SIZE - (ViewportWidth / Zoom / 2) + 100,
-            Global.WORLD_SIZE - (ViewportHeight / Zoom / 2) + 100
+            Global.WORLD_SIZE - (ViewportWidth / Zoom / 2) + clampOverrage,
+            Global.WORLD_SIZE - (ViewportHeight / Zoom / 2) + clampOverrage
         );
 
         Vector2 clamped = new Vector2();
-        clamped = Vector2.Clamp(position, new Vector2((ViewportWidth / Zoom / 2) - 100, (ViewportHeight / Zoom / 2) - 100), cameraMax);
+        clamped = Vector2.Clamp(position, new Vector2((ViewportWidth / Zoom / 2) - clampOverrage, (ViewportHeight / Zoom / 2) - clampOverrage), cameraMax);
         return clamped;
     }
 

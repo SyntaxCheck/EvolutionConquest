@@ -27,7 +27,7 @@ public class GameData
     public bool ShowFoodStrength { get; set; }
     public bool ShowDebugData { get; set; }
 
-    private const int CREATURES_COUNT_FOR_CHART = 10;
+    private const int CREATURES_COUNT_FOR_CHART = 15;
 
     public GameData()
     {
