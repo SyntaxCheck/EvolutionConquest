@@ -112,7 +112,7 @@ namespace EvolutionConquest
 
             InitVariables();
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
-            _writeStats = false;
+            _writeStats = true;
 
             IsMouseVisible = true;
 
@@ -273,11 +273,19 @@ namespace EvolutionConquest
 
             if (_writeStats)
             {
-                _dbConnectionSettings = SettingsHelper.ReadSettings("Settings.json");
+                try
+                {
+                    _dbConnectionSettings = SettingsHelper.ReadSettings("Settings.json");
 
-                //Establish a connection to the SQL Server database, we do not want to run a whole simulation only to find out the SQL Server database is not accessible
-                SqlConnection tmpConnection = _connectionManager.GetSqlConnection(_dbConnectionSettings);
-                tmpConnection.Close(); //Close the connection right away so that our connection does not timeout while the simulation/game runs
+                    //Establish a connection to the SQL Server database, we do not want to run a whole simulation only to find out the SQL Server database is not accessible
+                    SqlConnection tmpConnection = _connectionManager.GetSqlConnection(_dbConnectionSettings);
+                    tmpConnection.Close(); //Close the connection right away so that our connection does not timeout while the simulation/game runs
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to establish conncetion to database. Stats will not be written. Ex: " + ex.Message);
+                    _writeStats = false;
+                }
             }
         }
         protected override void UnloadContent()
@@ -615,7 +623,7 @@ namespace EvolutionConquest
                             {
                                 if (_gameData.Creatures[i].SpeciesId != _gameData.MapGridData[p.X, p.Y].Creatures[k].SpeciesId)
                                 {
-                                    if ((_gameData.MapGridData[p.X, p.Y].Creatures[k].IsHerbavore || (_gameData.MapGridData[p.X, p.Y].Creatures[k].IsScavenger && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Scavenger) || (!_gameData.Creatures[i].IsOmnivore && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Carnivore)))
+                                    if ((_gameData.MapGridData[p.X, p.Y].Creatures[k].IsHerbavore || (_gameData.MapGridData[p.X, p.Y].Creatures[k].IsScavenger && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Scavenger) || (!_gameData.Creatures[i].IsOmnivore && _gameData.MapGridData[p.X, p.Y].Creatures[k].IsCarnivore && (_gameData.Creatures[i].Carnivore - CARNIVORE_LEVEL_BUFFER) > _gameData.MapGridData[p.X, p.Y].Creatures[k].Carnivore)))
                                     {
                                         if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Creatures[k].Bounds))
                                         {
