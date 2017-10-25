@@ -11,7 +11,7 @@ public class ConnectionManager
     {
     }
 
-    public SqlConnection GetSqlConnection(DatabaseConnectionSettings settings)
+    public SqlConnection GetSqlConnection(GameSettings settings)
     {
         SqlConnection connection = new SqlConnection(
             "user id=" + settings.UserName + 

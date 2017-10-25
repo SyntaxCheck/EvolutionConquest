@@ -12,7 +12,8 @@ public class Egg : SpriteBase
     public float Camo { get; set; }
 
     public Egg()
-    { }
+    {
+    }
 
     public void AdvanceTick()
     {

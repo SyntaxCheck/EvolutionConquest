@@ -5,6 +5,7 @@ using System.Linq;
 
 public class GameData
 {
+    public GameSettings Settings { get; set; }
     public MapStatistics MapStatistics { get; set; } //Map stats for the top bar on the HUD
     public List<Creature> Creatures { get; set; } //List of creatures on the map
     public List<Creature> DeadCreatures { get; set; } //Used for writing stats at the end

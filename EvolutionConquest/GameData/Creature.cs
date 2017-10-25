@@ -336,6 +336,7 @@ public class Creature : SpriteBase
         baby.Ancestors = CopyAncestorList(Ancestors);
         baby.AncestorIds = CopyAncestorIdsList(AncestorIds);
         baby.IsAlive = true;
+        baby.WorldSize = WorldSize;
         baby.IsChangingSpecies = false;
         baby.NewSpeciesId = -1;
         baby.NewSpeciesName = String.Empty;
@@ -443,6 +444,7 @@ public class Creature : SpriteBase
 
         ZeroOutNegativeValues(ref baby);
 
+        egg.WorldSize = WorldSize;
         egg.Position = Position;
         egg.ElapsedTicks = 0;
         egg.TicksTillHatched = (int)Math.Ceiling(EggIncubationActual);
@@ -567,7 +569,7 @@ public class Creature : SpriteBase
         creatureSql += Math.Round(gameTimeMinutes,4) + ",";
         creatureSql += seed + ",";
         creatureSql += sessionID + ",";
-        creatureSql += Global.WORLD_SIZE + ",";
+        creatureSql += WorldSize + ",";
         creatureSql += Math.Round(creatureRatio, 10) + ",";
         creatureSql += Math.Round(foodRatio, 10) + ",";
         creatureSql += "'" + IsAlive + "',";

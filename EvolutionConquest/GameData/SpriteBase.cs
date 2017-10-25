@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 public class SpriteBase
 {
+    private int _worldSize;
     private Texture2D _texture;
     private Vector2 _position;
     private Rectangle _bounds;
@@ -15,6 +16,16 @@ public class SpriteBase
     private int _BottomOfCold;
     private int _TopOfHot;
 
+    public int WorldSize
+    {
+        get { return _worldSize; }
+        set
+        {
+            _worldSize = value;
+            _BottomOfCold = (int)(WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+            _TopOfHot = WorldSize - (int)(WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+        }
+    }
     public Texture2D Texture
     {
         get
@@ -45,15 +56,13 @@ public class SpriteBase
                 _position.X = 0;
             if (_position.Y < 0)
                 _position.Y = 0;
-            if (_position.X > Global.WORLD_SIZE)
-                _position.X = Global.WORLD_SIZE;
-            if (_position.Y > Global.WORLD_SIZE)
-                _position.Y = Global.WORLD_SIZE;
+            if (_position.X > WorldSize)
+                _position.X = WorldSize;
+            if (_position.Y > WorldSize)
+                _position.Y = WorldSize;
 
             if (Texture != null)
             {
-                //_bounds.X = (int)(_position.X - (Texture.Width / 2));
-                //_bounds.Y = (int)(_position.Y - (Texture.Height / 2));
                 _bounds.X = (int)Math.Round((_position.X - (Texture.Width / 2)), 0);
                 _bounds.Y = (int)Math.Round((_position.Y - (Texture.Height / 2)), 0);
             }
@@ -108,8 +117,6 @@ public class SpriteBase
         _position = Vector2.Zero;
         GridPositions = new List<Point>();
         OldGridPositions = new List<Point>();
-        _BottomOfCold = (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
-        _TopOfHot = Global.WORLD_SIZE - (int)(Global.WORLD_SIZE * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
         CurrentGridPositionsForCompare = String.Empty;
         OldGridPositionsForCompare = String.Empty;
     }
@@ -133,7 +140,7 @@ public class SpriteBase
     public Point CalculateGridPosition(int cellSize)
     {
         Point pos = new Point();
-        int maxIndex = Global.WORLD_SIZE / cellSize - 1;
+        int maxIndex = WorldSize / cellSize - 1;
         //Divide the position by the cell size then cast to int which does the same as Math.Floor. 
         //Multiply by the cell size to find the upper left cell corner. 
         //This only tells you the cell the object is in centered over not accounting for texture height/width

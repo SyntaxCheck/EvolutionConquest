@@ -88,13 +88,13 @@ public class Camera
     // Move the camera in an X and Y amount based on the cameraMovement param.
     // if clampToMap is true the camera will try not to pan outside of the
     // bounds of the map.
-    public void MoveCamera(Vector2 cameraMovement, bool clampToMap = false)
+    public void MoveCamera(int worldSize, Vector2 cameraMovement, bool clampToMap = false)
     {
         Vector2 newPosition = Position + cameraMovement;
 
         if (clampToMap)
         {
-            Position = MapClampedPosition(newPosition);
+            Position = MapClampedPosition(worldSize, newPosition);
         }
         else
         {
@@ -142,13 +142,13 @@ public class Camera
     //}
 
     // Clamp the camera so it never leaves the visible area of the map.
-    private Vector2 MapClampedPosition(Vector2 position)
+    private Vector2 MapClampedPosition(int worldSize, Vector2 position)
     {
         int clampOverrage = 1000;
 
         var cameraMax = new Vector2(
-            Global.WORLD_SIZE - (ViewportWidth / Zoom / 2) + clampOverrage,
-            Global.WORLD_SIZE - (ViewportHeight / Zoom / 2) + clampOverrage
+            worldSize - (ViewportWidth / Zoom / 2) + clampOverrage,
+            worldSize - (ViewportHeight / Zoom / 2) + clampOverrage
         );
 
         Vector2 clamped = new Vector2();
@@ -529,6 +529,6 @@ public class Camera
         // scale our movement to move 25 pixels per second
         cameraMovement *= 25f;
 
-        MoveCamera(cameraMovement, true);
+        MoveCamera(gameData.Settings.WorldSize, cameraMovement, true);
     }
 }
