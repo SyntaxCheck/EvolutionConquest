@@ -224,10 +224,8 @@ namespace EvolutionConquest
                 SpawnStartingCreature();
             }
 
-            //Test creatures
-            //SpawnTwoTestCreaturesWithInterceptPaths();
-            //SpawnOneTestCarnivore();
-            //SpawnOneTestScavenger();
+            //Generate initial Map stats so that the stats do not read all 0's at the beginning
+            _gameData.CalculateMapStatistics();
 
             Global.Camera.AdjustZoom(500);
 
@@ -287,6 +285,11 @@ namespace EvolutionConquest
                     _writeStats = false;
                 }
             }
+
+            ////Test creatures
+            //SpawnTwoTestCreaturesWithInterceptPaths();
+            //SpawnOneTestCarnivore();
+            //SpawnOneTestScavenger();
         }
         protected override void UnloadContent()
         {
@@ -1002,9 +1005,13 @@ namespace EvolutionConquest
 
                 if (creature.Sight > 0)
                 {
+                    //Top line
                     _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)) - 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2, 1), Color.Gray);
-                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y + creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2, 1), Color.Gray);
+                    //Bottom line
+                    _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y + creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)), (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2, 1), Color.Gray);
+                    //Left line
                     _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)) - 1, (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)) * 2), Color.Gray);
+                    //Right line
                     _spriteBatch.Draw(_whitePixel, new Rectangle((int)(creature.Position.X + creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0)), (int)(creature.Position.Y - creature.TextureCollideDistance - (int)Math.Round(creature.Sight, 0)), 1, (creature.TextureCollideDistance + (int)Math.Round(creature.Sight, 0) * 2)), Color.Gray);
                 }
 
@@ -1272,10 +1279,11 @@ namespace EvolutionConquest
         private void DrawPanelWithText(SpriteFont headerFont, string header, SpriteFont textFont, List<string> text, Global.Anchor anchor, int lockedWidthValue, int lockedHeightValue, int screenBuffer)
         {
             Color borderColor = Color.Black;
-            Color headerBackgroundColor = Color.LightGreen;
-            Color headerTextColor = Color.DarkGreen;
+            Color headerBackgroundColor = Color.Purple;
+            Color headerTextColor = Color.White;
             Color textColor = Color.DarkGreen;
             Color textBackgroundColor = Color.LightBlue;
+
             int startingX = 0, startingY = 0, width = 0, height = 0, headerHeight = 0, textHeight = 0, textWidth = 0, headerTextHeight = 0;
             int borderDepth = 2, textSpacing = 5;
             Vector2 headerSize;
