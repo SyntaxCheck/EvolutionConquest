@@ -27,6 +27,7 @@ public class GameData
     public bool ShowCreatureStats { get; set; }
     public bool ShowFoodStrength { get; set; }
     public bool ShowDebugData { get; set; }
+    public bool ShowSettingsPanel { get; set; }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
 
@@ -51,6 +52,7 @@ public class GameData
         ShowCreatureStats = true;
         ShowFoodStrength = false;
         ShowDebugData = false;
+        ShowSettingsPanel = false;
     }
 
     public void CalculateMapStatistics()

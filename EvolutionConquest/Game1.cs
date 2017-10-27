@@ -50,6 +50,7 @@ namespace EvolutionConquest
         private Texture2D _deadCreaturesTexture;
         private Texture2D _foodOnMapTexture;
         private Texture2D _eggsOnMapTexture;
+        private UIControls _uiControls;
         private Random _rand;
         private int _gameRandSeed;
         private int _sessionID;
@@ -231,6 +232,7 @@ namespace EvolutionConquest
             _controlsListText.Add("[PageUp][PageDown] Cycle Creatures");
             _controlsListText.Add("[Shift] + [PageUp][PageDown] Cycle Species");
             _controlsListText.Add("[Ctrl] + [PageUp][PageDown] Cycle Creatures");
+            _controlsListText.Add("[F1] Toggle Settings Panel");
             _controlsListText.Add("[F4] Toggle Herbavore Marker");
             _controlsListText.Add("[F5] Toggle Carnivore Marker");
             _controlsListText.Add("[F6] Toggle Scavenger Marker");
@@ -277,6 +279,8 @@ namespace EvolutionConquest
                     _writeStats = false;
                 }
             }
+
+            BuildSettingsPanel();
 
             ////Test creatures
             //SpawnTwoTestCreaturesWithInterceptPaths();
@@ -675,7 +679,7 @@ namespace EvolutionConquest
             else
             {
                 _inputState.Update();
-                _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData);
+                _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData, _uiControls);
                 Global.Camera.HandleInput(_inputState, PlayerIndex.One, ref _gameData);
             }
         }
@@ -1098,6 +1102,7 @@ namespace EvolutionConquest
             DrawMapStatistics();
             DrawControlsPanel();
             DrawChartBorder();
+            DrawSettingsPanel();
             DrawFPS();
             DrawDebugDataHUD();
 
@@ -1185,6 +1190,16 @@ namespace EvolutionConquest
                 int borderDepth = 2;
 
                 _spriteBatch.Draw(_whitePixel, new Rectangle(_chart.Location.X - borderDepth, _chart.Location.Y - borderDepth, _chart.Width + (borderDepth * 2), _chart.Height + (borderDepth * 2)), Color.Black);
+            }
+        }
+        private void DrawSettingsPanel()
+        {
+            if (_gameData.ShowSettingsPanel)
+            {
+                for (int i = 0; i < _uiControls.Sliders.Count; i++)
+                {
+                    _uiControls.Sliders[i].Draw(_spriteBatch);
+                }
             }
         }
         private void DrawFPS()
@@ -1405,6 +1420,25 @@ namespace EvolutionConquest
             _elapsedTicksSinceFoodUpgrade = 0;
             _maxFoodLevel = 2;
             _climateHeight = (int)(_gameData.Settings.WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+        }
+        private void BuildSettingsPanel()
+        {
+            _uiControls = new UIControls();
+            Slider _testSlider = new Slider();
+            _testSlider.SliderPosition = new Vector2(500, 500);
+            _testSlider.BarWidth = 150;
+            _testSlider.BarHeight = 10;
+            _testSlider.MarkerHeight = 20;
+            _testSlider.MarkerWidth = 10;
+            _testSlider.MinValue = 55;
+            _testSlider.MaxValue = 115;
+            _testSlider.CurrentValue = 75;
+            _testSlider.ShowPercent = true;
+            _testSlider.FillSlider = true;
+            _testSlider.Font = _panelHeaderFont;
+            _uiControls.Sliders.Add(_testSlider);
+
+            _testSlider.Initialize(_graphics.GraphicsDevice);
         }
         private void SpawnFood()
         {

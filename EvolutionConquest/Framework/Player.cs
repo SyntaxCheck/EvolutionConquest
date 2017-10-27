@@ -8,11 +8,14 @@ using System.Threading.Tasks;
 
 public class Player
 {
+    private bool isSliderActive;
+
     public Player()
     {
+        isSliderActive = false;
     }
 
-    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, ref GameData gameData)
+    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, ref GameData gameData, UIControls controls)
     {
         PlayerIndex playerIndex;
 
@@ -59,6 +62,50 @@ public class Player
         if (inputState.IsNewKeyPress(Keys.F7, controllingPlayer, out playerIndex))
         {
             gameData.OmnivoreMarkers = !gameData.OmnivoreMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F1, controllingPlayer, out playerIndex))
+        {
+            gameData.ShowSettingsPanel = !gameData.ShowSettingsPanel;
+        }
+
+        //Mouse logic
+        if (gameData.ShowSettingsPanel)
+        {
+            if (inputState.CurrentMouseState.LeftButton == ButtonState.Pressed)
+            {
+                for (int i = 0; i < controls.Sliders.Count; i++)
+                {
+                    if (inputState.CurrentMouseState.Position.X >= controls.Sliders[i].MarkerRectangle.Left && inputState.CurrentMouseState.Position.X <= controls.Sliders[i].MarkerRectangle.Right
+                        && inputState.CurrentMouseState.Position.Y >= controls.Sliders[i].MarkerRectangle.Top && inputState.CurrentMouseState.Position.Y <= controls.Sliders[i].MarkerRectangle.Bottom)
+                    {
+                        isSliderActive = true;
+                        controls.Sliders[i].SliderActive = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (isSliderActive)
+                {
+                    for (int i = 0; i < controls.Sliders.Count; i++)
+                    {
+                        controls.Sliders[i].SliderActive = false;
+                    }
+                    isSliderActive = false;
+                }
+            }
+            if (isSliderActive)
+            {
+                for (int i = 0; i < controls.Sliders.Count; i++)
+                {
+                    if (controls.Sliders[i].SliderActive)
+                    {
+                        controls.Sliders[i].MarkerTexturePosition = new Vector2(inputState.CurrentMouseState.X, controls.Sliders[i].MarkerTexturePosition.Y);
+                        break;
+                    }
+                }
+            }
         }
     }
 }
