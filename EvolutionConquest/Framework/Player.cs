@@ -15,7 +15,7 @@ public class Player
         isSliderActive = false;
     }
 
-    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, ref GameData gameData, UIControls controls)
+    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, ref GameData gameData, TabPanel tabPanel)
     {
         PlayerIndex playerIndex;
 
@@ -73,13 +73,13 @@ public class Player
         {
             if (inputState.CurrentMouseState.LeftButton == ButtonState.Pressed)
             {
-                for (int i = 0; i < controls.Sliders.Count; i++)
+                for (int i = 0; i < tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders.Count; i++)
                 {
-                    if (inputState.CurrentMouseState.Position.X >= controls.Sliders[i].MarkerRectangle.Left && inputState.CurrentMouseState.Position.X <= controls.Sliders[i].MarkerRectangle.Right
-                        && inputState.CurrentMouseState.Position.Y >= controls.Sliders[i].MarkerRectangle.Top && inputState.CurrentMouseState.Position.Y <= controls.Sliders[i].MarkerRectangle.Bottom)
+                    if (inputState.CurrentMouseState.Position.X >= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Left && inputState.CurrentMouseState.Position.X <= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Right
+                        && inputState.CurrentMouseState.Position.Y >= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Top && inputState.CurrentMouseState.Position.Y <= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Bottom)
                     {
                         isSliderActive = true;
-                        controls.Sliders[i].SliderActive = true;
+                        tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].SliderActive = true;
                         break;
                     }
                 }
@@ -88,20 +88,20 @@ public class Player
             {
                 if (isSliderActive)
                 {
-                    for (int i = 0; i < controls.Sliders.Count; i++)
+                    for (int i = 0; i < tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders.Count; i++)
                     {
-                        controls.Sliders[i].SliderActive = false;
+                        tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].SliderActive = false;
                     }
                     isSliderActive = false;
                 }
             }
             if (isSliderActive)
             {
-                for (int i = 0; i < controls.Sliders.Count; i++)
+                for (int i = 0; i < tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders.Count; i++)
                 {
-                    if (controls.Sliders[i].SliderActive)
+                    if (tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].SliderActive)
                     {
-                        controls.Sliders[i].MarkerTexturePosition = new Vector2(inputState.CurrentMouseState.X, controls.Sliders[i].MarkerTexturePosition.Y);
+                        tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerTexturePosition = new Vector2(inputState.CurrentMouseState.X, tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerTexturePosition.Y);
                         break;
                     }
                 }

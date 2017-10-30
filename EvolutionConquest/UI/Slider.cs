@@ -13,6 +13,7 @@ public class Slider
     private Vector2 _markerTexturePosition;
     private float _currentValue;
 
+    public bool Visible { get; set; }
     public Vector2 SliderPosition { get; set; } //Position is upper left corner
     public bool SliderActive { get; set; }
     public int BarWidth { get; set; }

@@ -50,7 +50,7 @@ namespace EvolutionConquest
         private Texture2D _deadCreaturesTexture;
         private Texture2D _foodOnMapTexture;
         private Texture2D _eggsOnMapTexture;
-        private UIControls _uiControls;
+        private TabPanel _settingsTabPanel;
         private Random _rand;
         private int _gameRandSeed;
         private int _sessionID;
@@ -117,6 +117,7 @@ namespace EvolutionConquest
             //Load settings at the beginning
             _gameData = new GameData();
             _gameData.Settings = SettingsHelper.ReadSettings("Settings.json");
+            _gameData.CreatureSettings = SettingsHelper.ReadCreatureSettings("CreatureSettings.json");
 
             //Init variables after the settings are loaded
             InitVariables();
@@ -148,8 +149,8 @@ namespace EvolutionConquest
             _whitePixel.SetData(color);
 
             _rand = new Random();
-            _sessionID = SESSION_NUMBER;
-            //_sessionID = _rand.Next(0, int.MaxValue); //We could have just used the Seed since it is random but I might implement the ability to choose seed at a later time
+            //_sessionID = SESSION_NUMBER;
+            _sessionID = _rand.Next(0, int.MaxValue); //We could have just used the Seed since it is random but I might implement the ability to choose seed at a later time
             //_rand = new Random(1);
             _gameRandSeed = _rand.Next(0, int.MaxValue); //Use the initial random class to set a seed
             _rand = new Random(_gameRandSeed); //Re-instantiate the _rand variable with our seed
@@ -203,21 +204,21 @@ namespace EvolutionConquest
             }
 
             //Load in random food
-            int amountOfFood = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / _foodTexture.Width) * _gameData.Settings.StartingFoodRatio);
+            int amountOfFood = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / _foodTexture.Width) * (_gameData.Settings.StartingFoodRatio / 100000f));
             for (int i = 0; i < amountOfFood; i++)
             {
                 SpawnFood();
             }
 
             //Game start, load in starting population of creatures
-            int startingCreatureAmount = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * (_gameData.Settings.StartingCreatureRatio / 10000f));
+            int startingCreatureAmount = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * (_gameData.Settings.StartingCreatureRatio / 1000000f));
             for (int i = 0; i < startingCreatureAmount; i++)
             {
                 SpawnStartingCreature();
             }
 
             //Calculate the food spawn speed
-            _foodGenerationIntervalSeconds = _gameData.Settings.FoodGenerationValue / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
+            _foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
 
             //Generate initial Map stats so that the stats do not read all 0's at the beginning
             _gameData.CalculateMapStatistics();
@@ -430,7 +431,7 @@ namespace EvolutionConquest
                 if (_gameData.Creatures[i].DigestedFood > 0 && _gameData.Creatures[i].TicksSinceLastEgg >= _gameData.Creatures[i].EggInterval)
                 {
                     _gameData.Creatures[i].DigestedFood--; //Costs one digested food to lay an egg
-                    Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData.Creatures, ref _creatureIdCtr);
+                    Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData, ref _creatureIdCtr);
                     //TODO handle this maybe in the Creature class
                     egg.Texture = _eggTexture;
                     egg.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
@@ -452,12 +453,12 @@ namespace EvolutionConquest
             if (ENABLE_FOOD_UPGRADES)
             {
                 _elapsedTicksForInitialFoodUpgrade++;
-                if (_elapsedTicksForInitialFoodUpgrade >= _gameData.Settings.TicksUntilFoodUpgradeStarts)
+                if (_elapsedTicksForInitialFoodUpgrade >= _gameData.Settings.TicksUntilFoodUpgradeStarts * TICKS_PER_SECOND)
                 {
                     if (_maxFoodLevel < _gameData.Settings.MaxFoodLevel)
                     {
                         _elapsedTicksSinceFoodUpgrade++;
-                        if (_elapsedTicksSinceFoodUpgrade >= _gameData.Settings.TicksBetweenFoodUpgrades)
+                        if (_elapsedTicksSinceFoodUpgrade >= _gameData.Settings.TicksBetweenFoodUpgrades * TICKS_PER_SECOND)
                         {
                             //Chance to increase the food level
                             if (_rand.Next(0, 100) <= _gameData.Settings.FoodUpgradeChancePercent)
@@ -679,7 +680,7 @@ namespace EvolutionConquest
             else
             {
                 _inputState.Update();
-                _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData, _uiControls);
+                _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData, _settingsTabPanel);
                 Global.Camera.HandleInput(_inputState, PlayerIndex.One, ref _gameData);
             }
         }
@@ -729,7 +730,7 @@ namespace EvolutionConquest
             {
                 //Move the creature
                 _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * ((_gameData.Creatures[creatureIndex].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].Speed * _gameData.Settings.EnergyDepletionFromMovement;
+                _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].Speed * (_gameData.Settings.EnergyDepletionFromMovement / 1000f);
                 _gameData.Creatures[creatureIndex].GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
                 if (_gameData.Creatures[creatureIndex].CurrentGridPositionsForCompare != _gameData.Creatures[creatureIndex].OldGridPositionsForCompare)
@@ -1196,9 +1197,9 @@ namespace EvolutionConquest
         {
             if (_gameData.ShowSettingsPanel)
             {
-                for (int i = 0; i < _uiControls.Sliders.Count; i++)
+                for (int i = 0; i < _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders.Count; i++)
                 {
-                    _uiControls.Sliders[i].Draw(_spriteBatch);
+                    _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].Draw(_spriteBatch);
                 }
             }
         }
@@ -1419,11 +1420,26 @@ namespace EvolutionConquest
             _elapsedTicksForInitialFoodUpgrade = 0;
             _elapsedTicksSinceFoodUpgrade = 0;
             _maxFoodLevel = 2;
-            _climateHeight = (int)(_gameData.Settings.WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+            _climateHeight = (int)(_gameData.Settings.WorldSize * (_gameData.Settings.ClimateHeightPercent * 0.01));
         }
         private void BuildSettingsPanel()
         {
-            _uiControls = new UIControls();
+            //Build the Panel
+            _settingsTabPanel = new TabPanel();
+            _settingsTabPanel.Tabs = new List<Tab>();
+            //Build Tab section
+            
+            _settingsTabPanel.Tabs.Add(BuildWorldSettingsTab());
+
+            _settingsTabPanel.ActiveTab = 0;
+        }
+        private Tab BuildWorldSettingsTab()
+        {
+            Tab worldTab = new Tab();
+            worldTab.TabNumber = 1;
+            worldTab.TabText = "Map Settings";
+
+            UIControls _uiControls = new UIControls();
             Slider _testSlider = new Slider();
             _testSlider.SliderPosition = new Vector2(500, 500);
             _testSlider.BarWidth = 150;
@@ -1439,6 +1455,10 @@ namespace EvolutionConquest
             _uiControls.Sliders.Add(_testSlider);
 
             _testSlider.Initialize(_graphics.GraphicsDevice);
+
+            worldTab.Controls = _uiControls;
+
+            return worldTab;
         }
         private void SpawnFood()
         {
@@ -1449,6 +1469,7 @@ namespace EvolutionConquest
         {
             Food food = new Food();
             food.WorldSize = _gameData.Settings.WorldSize;
+            food.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
             food.Texture = _foodTexture;
             food.Position = position;
 
@@ -1489,7 +1510,8 @@ namespace EvolutionConquest
         {
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
+            creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
             creature.Texture = DetermineCreatureTexture(creature);
             creature.Position = new Vector2(_rand.Next(creature.Texture.Width, _gameData.Settings.WorldSize - creature.Texture.Width), _rand.Next(creature.Texture.Height, _gameData.Settings.WorldSize - creature.Texture.Height));
             creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
@@ -1633,7 +1655,8 @@ namespace EvolutionConquest
         {
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
+            creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
@@ -1654,7 +1677,8 @@ namespace EvolutionConquest
 
             Creature creature2 = new Creature();
             creature2.WorldSize = _gameData.Settings.WorldSize;
-            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
+            creature2.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
             _speciesIdCounter++;
             creature2.Species = "Cheater2";
             creature2.OriginalSpecies = "Cheater2";
@@ -1684,7 +1708,8 @@ namespace EvolutionConquest
         {
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
+            creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
@@ -1714,7 +1739,8 @@ namespace EvolutionConquest
         {
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData.Creatures);
+            creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
             _speciesIdCounter++;
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";

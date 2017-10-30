@@ -123,23 +123,6 @@ public class Creature : SpriteBase
 
     public const string CREATURE_TABLE_NAME = "Creatures";
     public const string ANCESTORS_TABLE_NAME = "Ancestors";
-    public const float EGG_INTERVAL_INIT_MIN = 400;
-    public const float EGG_INTERVAL_INIT_MAX = 500;
-    public const float EGG_INCUBATION_INIT_MIN = 400;
-    public const float EGG_INCUBATION_INIT_MAX = 800;
-    public const float FOOD_DIGESTION_INIT_MIN = 50;
-    public const float FOOD_DIGESTION_INIT_MAX = 250;
-    public const float SPEED_INIT_MIN = 5;
-    public const float SPEED_INIT_MAX = 25;
-    public const float LIFESPAN_INIT_MIN = 1000;
-    public const float LIFESPAN_INIT_MAX = 1200;
-    public const float HERBAVORE_INIT_MIN = 1;
-    public const float HERBAVORE_INIT_MAX = 2;
-    public const float COLD_TOLERANCE_INIT_MIN = 0;
-    public const float COLD_TOLERANCE_INIT_MAX = 10;
-    public const float HOT_TOLERANCE_INIT_MIN = 0;
-    public const float HOT_TOLERANCE_INIT_MAX = 10;
-    public const float ENERGY_INIT = 425;
     public const int TICKS_BETWEEN_SIGHT_EVAL = 15;
     public const float EGG_CAMO_COST_MULTIPLIER = 10f; //Multiplier on the energy cost for laying the egg
 
@@ -173,7 +156,7 @@ public class Creature : SpriteBase
         CalculatedIntercept = Vector2.Zero;
     }
 
-    public void InitNewCreature(Random rand, ref Names names, int speciesId, ref int creatureIdCtr, List<Creature> gameDataCreatures)
+    public void InitNewCreature(Random rand, ref Names names, int speciesId, ref int creatureIdCtr, GameData gameData)
     {
         creatureIdCtr++;
         CreatureId = creatureIdCtr;
@@ -190,37 +173,43 @@ public class Creature : SpriteBase
         Rotation = MathHelper.ToRadians(rand.Next(0, 360));
         UndigestedFood = 0;
         DigestedFood = 0;
-        FoodDigestion = rand.Next((int)FOOD_DIGESTION_INIT_MIN, (int)FOOD_DIGESTION_INIT_MAX);
+        FoodDigestion = rand.Next((int)(gameData.CreatureSettings.StartingFoodDigestionMin * 10f), (int)(gameData.CreatureSettings.StartingFoodDigestionMax * 10f));
         TotalFoodEaten = 0;
         TicksSinceLastDigestedFood = 0;
         TicksSinceLastEgg = 0;
-        EggInterval = rand.Next((int)EGG_INTERVAL_INIT_MIN, (int)EGG_INTERVAL_INIT_MAX);
-        EggIncubation = rand.Next((int)EGG_INCUBATION_INIT_MIN, (int)EGG_INCUBATION_INIT_MAX);
+        EggInterval = rand.Next((int)(gameData.CreatureSettings.StartingEggIntervalMin * 10f), (int)(gameData.CreatureSettings.StartingEggIntervalMax * 10f));
+        EggIncubation = rand.Next((int)(gameData.CreatureSettings.StartingEggIncubationMin * 10f), (int)(gameData.CreatureSettings.StartingEggIncubationMax * 10f));
         EggsCreated = 0;
         EggCamo = 0;
         EggToxicity = 0;
-        Speed = rand.Next((int)SPEED_INIT_MIN, (int)SPEED_INIT_MAX);
-        Lifespan = rand.Next((int)LIFESPAN_INIT_MIN, (int)LIFESPAN_INIT_MAX);
-        Energy = ENERGY_INIT; //No mutations or variance on this
+        Speed = rand.Next((int)gameData.CreatureSettings.StartingSpeedMin, (int)gameData.CreatureSettings.StartingSpeedMax);
+        Lifespan = rand.Next((int)(gameData.CreatureSettings.StartingLifespanMin * 10f), (int)(gameData.CreatureSettings.StartingLifespanMax * 10f));
+        Energy = gameData.CreatureSettings.StartingEnergy; //No mutations or variance on this
         ElapsedTicks = 0;
         Sight = 0;
         TicksSinceLastVisionCheck = 0;
         TicksBetweenVisionChecks = TICKS_BETWEEN_SIGHT_EVAL;
         Attraction = 0;
-        Herbavore = rand.Next((int)HERBAVORE_INIT_MIN, (int)HERBAVORE_INIT_MAX);
-        Carnivore = 0;
-        Scavenger = 0;
-        Omnivore = 0;
+        Herbavore = rand.Next((int)gameData.CreatureSettings.StartingHerbavoreLevelMin, (int)gameData.CreatureSettings.StartingHerbavoreLevelMax);
+        Carnivore = rand.Next((int)gameData.CreatureSettings.StartingCarnivoreLevelMin, (int)gameData.CreatureSettings.StartingCarnivoreLevelMax);
+        Scavenger = rand.Next((int)gameData.CreatureSettings.StartingScavengerLevelMin, (int)gameData.CreatureSettings.StartingScavengerLevelMax);
+        Omnivore = rand.Next((int)gameData.CreatureSettings.StartingOmnivoreLevelMin, (int)gameData.CreatureSettings.StartingOmnivoreLevelMax);
         Camo = 0;
         Cloning = 0;
-        ColdClimateTolerance = rand.Next((int)COLD_TOLERANCE_INIT_MIN, (int)COLD_TOLERANCE_INIT_MAX);
-        HotClimateTolerance = rand.Next((int)HOT_TOLERANCE_INIT_MIN, (int)HOT_TOLERANCE_INIT_MAX);
-        IsHerbavore = true;
+        ColdClimateTolerance = rand.Next((int)gameData.CreatureSettings.StartingColdToleranceMin, (int)gameData.CreatureSettings.StartingColdToleranceMax);
+        HotClimateTolerance = rand.Next((int)gameData.CreatureSettings.StartingHotToleranceMin, (int)gameData.CreatureSettings.StartingHotToleranceMax);
         TicksInColdClimate = 0;
         TicksInHotClimate = 0;
         EggIncubationActual = EggIncubation + (Herbavore * 10);
 
-        foreach (Creature c in gameDataCreatures)
+        bool isHerb, isCarn, isScav, isOmni;
+        DetermineCreatureType(Herbavore, Carnivore, Scavenger, Omnivore, out isHerb, out isCarn, out isScav, out isOmni);
+        IsHerbavore = isHerb;
+        IsCarnivore = isCarn;
+        IsScavenger = isScav;
+        IsOmnivore = isOmni;
+
+        foreach (Creature c in gameData.Creatures)
         {
             if (IsCloseTo(this, c))
             {
@@ -323,7 +312,7 @@ public class Creature : SpriteBase
             }
         }
     }
-    public Egg LayEgg(Random rand, ref Names names, List<Creature> gameDataCreatureList, ref int creatureIdCtr)
+    public Egg LayEgg(Random rand, ref Names names, GameData gameData, ref int creatureIdCtr)
     {
         Egg egg = new Egg();
         Creature baby = new Creature();
@@ -337,6 +326,7 @@ public class Creature : SpriteBase
         baby.AncestorIds = CopyAncestorIdsList(AncestorIds);
         baby.IsAlive = true;
         baby.WorldSize = WorldSize;
+        baby.ClimateHeightPercent = ClimateHeightPercent;
         baby.IsChangingSpecies = false;
         baby.NewSpeciesId = -1;
         baby.NewSpeciesName = String.Empty;
@@ -354,7 +344,7 @@ public class Creature : SpriteBase
         baby.TicksSinceLastDigestedFood = 0;
         baby.TicksSinceLastEgg = 0;
         baby.ElapsedTicks = 0;
-        baby.Energy = ENERGY_INIT + (GetCreatureLevel() * 10); //No mutation chance on energy
+        baby.Energy = gameData.CreatureSettings.StartingEnergy + (GetCreatureLevel() * 10); //No mutation chance on energy
         baby.TicksSinceLastVisionCheck = 0;
         baby.TicksBetweenVisionChecks = TicksBetweenVisionChecks;
         baby.TicksInColdClimate = 0;
@@ -421,7 +411,7 @@ public class Creature : SpriteBase
                 if (!IsChangingSpecies)
                 {
                     NewSpeciesName = names.GetRandomName(rand);
-                    NewSpeciesId = gameDataCreatureList.Max(t => t.SpeciesId) + 1;
+                    NewSpeciesId = gameData.Creatures.Max(t => t.SpeciesId) + 1;
                     IsChangingSpecies = true;
                 }
 
@@ -445,6 +435,7 @@ public class Creature : SpriteBase
         ZeroOutNegativeValues(ref baby);
 
         egg.WorldSize = WorldSize;
+        egg.ClimateHeightPercent = ClimateHeightPercent;
         egg.Position = Position;
         egg.ElapsedTicks = 0;
         egg.TicksTillHatched = (int)Math.Ceiling(EggIncubationActual);
@@ -798,5 +789,43 @@ public class Creature : SpriteBase
         if (creature.Carnivore < 0) creature.Carnivore = 0;
         if (creature.Omnivore < 0) creature.Omnivore = 0;
         if (creature.Scavenger < 0) creature.Scavenger = 0;
+    }
+    private void DetermineCreatureType(float herbavore, float carnivore, float scavenger, float omnivore, out bool isHerbavore, out bool isCarnivore, out bool isScavenger, out bool isOmnivore)
+    {
+        if (herbavore >= carnivore && herbavore >= scavenger && herbavore >= omnivore)
+        {
+            isHerbavore = true;
+            isCarnivore = false;
+            isScavenger = false;
+            isOmnivore = false;
+        }
+        else if (carnivore >= herbavore && carnivore >= scavenger && carnivore >= omnivore)
+        {
+            isHerbavore = false;
+            isCarnivore = true;
+            isScavenger = false;
+            isOmnivore = false;
+        }
+        else if (scavenger >= herbavore && scavenger >= carnivore && scavenger >= omnivore)
+        {
+            isHerbavore = false;
+            isCarnivore = false;
+            isScavenger = true;
+            isOmnivore = false;
+        }
+        else if (omnivore >= herbavore && omnivore >= carnivore && omnivore >= scavenger)
+        {
+            isHerbavore = true;
+            isCarnivore = true;
+            isScavenger = false;
+            isOmnivore = true;
+        }
+        else
+        {
+            isHerbavore = true;
+            isCarnivore = false;
+            isScavenger = false;
+            isOmnivore = false;
+        }
     }
 }

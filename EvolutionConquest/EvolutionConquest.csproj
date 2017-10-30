@@ -55,6 +55,7 @@
     <Compile Include="GameData\Borders.cs" />
     <Compile Include="GameData\ClimateShapeGenerator.cs" />
     <Compile Include="GameData\Creature.cs" />
+    <Compile Include="DataCollection\CreatureSettings.cs" />
     <Compile Include="GameData\CreatureShapeGenerator.cs" />
     <Compile Include="GameData\Egg.cs" />
     <Compile Include="GameData\EggShapeGenerator.cs" />
@@ -71,6 +72,8 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UI\Slider.cs" />
+    <Compile Include="UI\Tab.cs" />
+    <Compile Include="UI\TabPanel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="MonoGame.Framework">

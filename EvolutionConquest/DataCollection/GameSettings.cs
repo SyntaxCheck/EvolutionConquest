@@ -13,6 +13,7 @@ public class GameSettings
     public string Password { get; set; }
     //Game Settings
     public int WorldSize { get; set; }
+    public int ClimateHeightPercent { get; set; }
     public float StartingFoodRatio { get; set; }
     public float FoodGenerationValue { get; set; }
     public float StartingCreatureRatio { get; set; }

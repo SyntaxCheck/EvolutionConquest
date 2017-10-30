@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 public class SpriteBase
 {
+    private int _climateHeightPercent;
     private int _worldSize;
     private Texture2D _texture;
     private Vector2 _position;
@@ -22,8 +23,19 @@ public class SpriteBase
         set
         {
             _worldSize = value;
-            _BottomOfCold = (int)(WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
-            _TopOfHot = WorldSize - (int)(WorldSize * (Global.CLIMATE_HEIGHT_PERCENT * 0.01));
+        }
+    }
+    public int ClimateHeightPercent
+    {
+        get
+        {
+            return _climateHeightPercent;
+        }
+        set
+        {
+            _climateHeightPercent = value;
+            _BottomOfCold = (int)(WorldSize * (_climateHeightPercent * 0.01));
+            _TopOfHot = WorldSize - (int)(WorldSize * (_climateHeightPercent * 0.01));
         }
     }
     public Texture2D Texture
