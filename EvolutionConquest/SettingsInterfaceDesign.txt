@@ -1,0 +1,41 @@
+﻿Map Settings
+
+World Size: 50 - 50000
+Climate Percent: 0 - 49
+Starting Food Ratio: 0 - 100
+Food Generation Value: 0 - 100
+Seconds Until Food Upgrades Start: 0 - 5000
+Seconds Between Food Upgrades: 0 - 500
+Food Upgrade Amount: 0 - 5
+Food Upgrade Percent Change: 0 - 100
+Max Food level: 0 - 250
+Starting Creature Ratio: 0 - 250
+Energy Given From Food: 0 - 500
+Energy Loss From Laying Egg: 0 - 500
+Energy Depletion From Movement Rate: 0 - 250
+
+Creature Settings
+
+Starting Egg Interval Min: 0 - 100
+Starting Egg Interval Max: 0 - 100
+Starting Egg Incubation Min: 0 - 100
+Starting Egg Incubation Max: 0 - 100
+Starting Food Digestion Min: 0 - 100
+Starting Food Digestion Max: 0 - 100
+Starting Speed Min: 0 - 50
+Starting Speed Max: 0 - 50
+Starting Lifespan Min: 0 - 1000
+Starting Lifespan Max: 0 - 1000
+Starting Herbavore Level Min: 0 - 50
+Starting Herbavore Level Max: 0 - 50
+Starting Carnivore Level Min: 0 - 50
+Starting Carnivore Level Max: 0 - 50
+Starting Scavenger Level Min: 0 - 50
+Starting Scavenger Level Max: 0 - 50
+Starting Omnivore Level Min: 0 - 50
+Starting Omnivore Level Max: 0 - 50
+Starting Cold Tolerance Min: 0 - 100
+Starting Cold Tolerance Max: 0 - 100
+Starting Hot Tolerance Min: 0 - 100
+Starting Hot Tolerance Max: 0 - 100
+Starting Energy": 0 - 5000

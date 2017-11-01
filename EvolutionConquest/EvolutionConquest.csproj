@@ -92,6 +92,7 @@
     <Content Include="DataCollection\TableCreateCreatures.sql" />
     <Content Include="GridCellSizePerformanceTesting.txt" />
     <Content Include="Icon.ico" />
+    <Content Include="SettingsInterfaceDesign.txt" />
     <Content Include="ToDoList.txt" />
   </ItemGroup>
   <ItemGroup>
