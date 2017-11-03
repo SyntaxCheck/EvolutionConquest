@@ -1197,9 +1197,59 @@ namespace EvolutionConquest
         {
             if (_gameData.ShowSettingsPanel)
             {
+                int borderWidth = 5;
+                int tabSpacing = 5;
+                int sliderSpacing = 5;
+                int tabTextHeight = 0;
+                int workingXPos = 0;
+                int workingYPos = 0;
+
+                //Draw the panel frame first
+                _spriteBatch.Draw(_whitePixel, new Rectangle(_settingsTabPanel.Position.X, _settingsTabPanel.Position.Y, _settingsTabPanel.PanelWidth, _settingsTabPanel.PanelHeight), Color.Black);
+                _spriteBatch.Draw(_whitePixel, new Rectangle(_settingsTabPanel.Position.X + borderWidth, _settingsTabPanel.Position.Y + borderWidth, _settingsTabPanel.PanelWidth - (borderWidth * 2), _settingsTabPanel.PanelHeight - (borderWidth * 2)), Color.White);
+     
+                workingXPos = _settingsTabPanel.Position.X + borderWidth;
+                workingYPos = _settingsTabPanel.Position.Y + borderWidth;
+
+                //Draw the tabs
+                for (int i = 0; i < _settingsTabPanel.Tabs.Count; i++)
+                {
+                    Color tabBackgroundColor = Color.White;
+                    if (i == _settingsTabPanel.ActiveTab)
+                    {
+                        tabBackgroundColor = Color.Yellow;
+                    }
+
+                    Vector2 tabSize = _panelHeaderFont.MeasureString(_settingsTabPanel.Tabs[i].TabText);
+                    tabTextHeight = (int)Math.Ceiling(tabSize.Y);
+
+                    //Draw the Tab background
+                    int tabWidth = (int)Math.Ceiling(tabSize.X) + (tabSpacing * 2);
+                    _spriteBatch.Draw(_whitePixel, new Rectangle(workingXPos, workingYPos, (int)Math.Ceiling(tabSize.X) + (tabSpacing * 2), (int)Math.Ceiling(tabSize.Y) + (tabSpacing * 2)), tabBackgroundColor);
+                    //Draw the text
+                    _spriteBatch.DrawString(_panelHeaderFont, _settingsTabPanel.Tabs[i].TabText, new Vector2(workingXPos + tabSpacing, workingYPos + tabSpacing), Color.Black);
+                    //Increment the working variable
+                    workingXPos += tabWidth;
+                }
+
+                workingXPos = _settingsTabPanel.Position.X + borderWidth;
+                workingYPos += tabTextHeight + (tabSpacing * 2);
+
+                //Draw post tab line
+                _spriteBatch.Draw(_whitePixel, new Rectangle(workingXPos, workingYPos, _settingsTabPanel.PanelWidth - borderWidth, borderWidth), Color.Black);
+
+                workingXPos += sliderSpacing;
+                workingYPos += (borderWidth * 2) + sliderSpacing;
+
                 for (int i = 0; i < _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders.Count; i++)
                 {
+                    _spriteBatch.DrawString(_panelHeaderFont, _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].SliderText, new Vector2(workingXPos, workingYPos), Color.Black);
+
+                    _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].SliderPosition = new Vector2(workingXPos + 300, workingYPos);
+                    _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].CurrentValue = _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].CurrentValue;
                     _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].Draw(_spriteBatch);
+
+                    workingYPos += _settingsTabPanel.Tabs[_settingsTabPanel.ActiveTab].Controls.Sliders[i].MarkerHeight + sliderSpacing;
                 }
             }
         }
@@ -1427,17 +1477,251 @@ namespace EvolutionConquest
             //Build the Panel
             _settingsTabPanel = new TabPanel();
             _settingsTabPanel.Tabs = new List<Tab>();
+            _settingsTabPanel.PanelWidth = _graphics.GraphicsDevice.Viewport.Width / 2;
+            _settingsTabPanel.PanelHeight = _graphics.GraphicsDevice.Viewport.Height / 2;
+            _settingsTabPanel.Position = new Point(((_graphics.GraphicsDevice.Viewport.Width / 2) - (_settingsTabPanel.PanelWidth / 2)), ((_graphics.GraphicsDevice.Viewport.Height / 2) - (_settingsTabPanel.PanelHeight / 2)));
             //Build Tab section
-            
+
             _settingsTabPanel.Tabs.Add(BuildWorldSettingsTab());
+            _settingsTabPanel.Tabs.Add(BuildCreatureSettingsTab());
 
             _settingsTabPanel.ActiveTab = 0;
         }
         private Tab BuildWorldSettingsTab()
         {
+            int sliderSpacing = 5;
+            int sliderBarWidth = 300;
+            int workingX = sliderSpacing;
+            int workingY = sliderSpacing;
             Tab worldTab = new Tab();
             worldTab.TabNumber = 1;
             worldTab.TabText = "Map Settings";
+
+            UIControls _uiControls = new UIControls();
+
+            //World Size
+            Slider tmpSlider = new Slider();
+            tmpSlider.SliderText = "World Size";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 50;
+            tmpSlider.MaxValue = 50000;
+            tmpSlider.CurrentValue = _gameData.Settings.WorldSize;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            //Climate Percent
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Climate Percent";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 49;
+            tmpSlider.CurrentValue = _gameData.Settings.ClimateHeightPercent;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            //Starting Food Ratio
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Starting Food Ratio";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.Settings.StartingFoodRatio;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            //Food Generation value
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Generation Value";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.Settings.FoodGenerationValue;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Time to start Food Upgrade
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Upgrade Start Time";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 5000;
+            tmpSlider.CurrentValue = _gameData.Settings.TicksUntilFoodUpgradeStarts;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Time between food upgrades
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Time Between Food Upgrades";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 500;
+            tmpSlider.CurrentValue = _gameData.Settings.TicksBetweenFoodUpgrades;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Food upgrade amount
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Upgrade Amount";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 10;
+            tmpSlider.CurrentValue = _gameData.Settings.FoodUpgradeAmount;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Food max level
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Max Level";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 250;
+            tmpSlider.CurrentValue = _gameData.Settings.MaxFoodLevel;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Starting Creature ratio
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Starting Creatures";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 250;
+            tmpSlider.CurrentValue = _gameData.Settings.StartingCreatureRatio;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            //Energy given from Food
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Energy From Food";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 500;
+            tmpSlider.CurrentValue = _gameData.Settings.EnergyGivenFromFood;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Energy Loss from Laying egg
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Lay egg energy loss";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 500;
+            tmpSlider.CurrentValue = _gameData.Settings.EnergyConsumptionFromLayingEgg;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            //Energy depletion from movement
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Movement Energy Loss";
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 250;
+            tmpSlider.CurrentValue = _gameData.Settings.EnergyDepletionFromMovement;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            worldTab.Controls = _uiControls;
+
+            return worldTab;
+        }
+        private Tab BuildCreatureSettingsTab()
+        {
+            Tab worldTab = new Tab();
+            worldTab.TabNumber = 2;
+            worldTab.TabText = "Creature Settings";
 
             UIControls _uiControls = new UIControls();
             Slider _testSlider = new Slider();
@@ -1448,7 +1732,7 @@ namespace EvolutionConquest
             _testSlider.MarkerWidth = 10;
             _testSlider.MinValue = 55;
             _testSlider.MaxValue = 115;
-            _testSlider.CurrentValue = 75;
+            _testSlider.CurrentValue = 25;
             _testSlider.ShowPercent = true;
             _testSlider.FillSlider = true;
             _testSlider.Font = _panelHeaderFont;

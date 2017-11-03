@@ -9,18 +9,19 @@ using System.Threading.Tasks;
 public class Slider
 {
     private GraphicsDevice _device;
-    private int _markerPosition;
+    private float _markerPosition;
     private Vector2 _markerTexturePosition;
     private float _currentValue;
 
     public bool Visible { get; set; }
+    public string SliderText { get; set; }
     public Vector2 SliderPosition { get; set; } //Position is upper left corner
     public bool SliderActive { get; set; }
     public int BarWidth { get; set; }
     public int BarHeight { get; set; }
     public int MarkerWidth { get; set; }
     public int MarkerHeight { get; set; }
-    public int MarkerPosition //This position is the Value 0 - 100 percent
+    public float MarkerPosition //This position is the Value 0 - 100 percent
     {
         get { return _markerPosition; }
         set
@@ -48,7 +49,7 @@ public class Slider
             float markerX = (_markerTexturePosition.X - SliderPosition.X);
             float percent = (float)Math.Round(markerX / BarWidth, 2);
             
-            MarkerPosition = (int)(percent * 100);
+            MarkerPosition = percent * 100;
             BuildBarTexture();
         }
     }
@@ -69,7 +70,7 @@ public class Slider
             _currentValue = value;
             float adjustedPosition = _currentValue - MinValue;
             float range = MaxValue - MinValue;
-            MarkerPosition = (int)Math.Round((adjustedPosition / range) * 100.0, 0);
+            MarkerPosition = (adjustedPosition / range) * 100f;
         }
     }
     public bool ShowPercent { get; set; }
@@ -105,7 +106,7 @@ public class Slider
                 {
                     if (FillSlider)
                     {
-                        if (x < BarWidth * (MarkerPosition / 100.0))
+                        if (x < BarWidth * (MarkerPosition / 100f))
                         {
                             colorList.Add(fillColor);
                         }
