@@ -12,6 +12,8 @@ public class TabPanel
     public Point Position { get; set; }
     public List<Tab> Tabs { get; set; }
     public int ActiveTab { get; set; }
+    public Button SaveButton { get; set; }
+    public Button CloseButton { get; set; }
 
     public TabPanel()
     {

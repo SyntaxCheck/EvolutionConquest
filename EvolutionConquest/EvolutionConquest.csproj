@@ -71,6 +71,7 @@
     <Compile Include="GameData\SpriteBase.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UI\Button.cs" />
     <Compile Include="UI\Slider.cs" />
     <Compile Include="UI\Tab.cs" />
     <Compile Include="UI\TabPanel.cs" />

@@ -73,6 +73,36 @@ public class Player
         {
             if (inputState.CurrentMouseState.LeftButton == ButtonState.Pressed)
             {
+                //Check tab click
+                for (int i = 0; i < tabPanel.Tabs.Count; i++)
+                {
+                    if (tabPanel.Tabs[i].ButtonRectangle.Contains(inputState.CurrentMouseState.Position))
+                    {
+                        tabPanel.ActiveTab = i;
+                        break;
+                    }
+                }
+
+                //Check for Save click
+                if (tabPanel.SaveButton.ButtonRectangle.Contains(inputState.CurrentMouseState.Position))
+                {
+                    //Save all the settings
+                    gameData.Settings.WorldSize = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.WorldSize).First().CurrentValue;
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                }
+                //Check for Close click
+                else if (tabPanel.CloseButton.ButtonRectangle.Contains(inputState.CurrentMouseState.Position))
+                {
+                    gameData.ShowSettingsPanel = false;
+                }
+
+                //Check slider interaction
                 for (int i = 0; i < tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders.Count; i++)
                 {
                     if (inputState.CurrentMouseState.Position.X >= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Left && inputState.CurrentMouseState.Position.X <= tabPanel.Tabs[tabPanel.ActiveTab].Controls.Sliders[i].MarkerRectangle.Right

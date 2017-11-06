@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ public class Tab
     public Texture2D TabImage { get; set; }
     public string TabText { get; set; }
     public UIControls Controls { get; set; }
+    public Rectangle ButtonRectangle { get; set; }
 
     public Tab()
     {

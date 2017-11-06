@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using EvolutionConquest;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ public class Slider
 
     public bool Visible { get; set; }
     public string SliderText { get; set; }
+    public SettingEnum SliderCode { get; set; }
     public Vector2 SliderPosition { get; set; } //Position is upper left corner
     public bool SliderActive { get; set; }
     public int BarWidth { get; set; }
