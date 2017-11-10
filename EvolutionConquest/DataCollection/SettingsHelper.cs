@@ -25,20 +25,8 @@ public class SettingsHelper
             initialSetting.ServerName = "YourServerAndInstanceNameHere";
             initialSetting.UserName = "UsrName_Here_Must_Be_SQL_Authentication";
             initialSetting.Password = "YourSecurePasswordHere";
-            initialSetting.WorldSize = 5000;
-            initialSetting.ClimateHeightPercent = 20;
-            initialSetting.StartingFoodRatio = 50f;
-            initialSetting.FoodGenerationValue = 25f;
-            initialSetting.TicksUntilFoodUpgradeStarts = 1800;
-            initialSetting.TicksBetweenFoodUpgrades = 150;
-            initialSetting.StartingCreatureRatio = 50f;
-            initialSetting.FoodUpgradeAmount = 1;
-            initialSetting.FoodUpgradeChancePercent = 20;
-            initialSetting.MaxFoodLevel = 50;
-            initialSetting.EnergyGivenFromFood = 100;
-            initialSetting.EnergyConsumptionFromLayingEgg = 50;
-            initialSetting.EnergyDepletionFromMovement = 10f;
-            initialSetting.CarnivoreLevelBuffer = 5;
+
+            SetDefaultWorld(ref initialSetting);
 
             WriteSettings(path, initialSetting);
         }
@@ -57,35 +45,32 @@ public class SettingsHelper
         {
             CreatureSettings initialSetting = new CreatureSettings();
 
-            initialSetting.StartingEggIntervalMin = 40;
-            initialSetting.StartingEggIntervalMax = 50;
-            initialSetting.StartingEggIncubationMin = 40;
-            initialSetting.StartingEggIncubationMax = 80;
-            initialSetting.StartingFoodDigestionMin = 5;
-            initialSetting.StartingFoodDigestionMax = 25;
-            initialSetting.StartingSpeedMin = 5;
-            initialSetting.StartingSpeedMax = 25;
-            initialSetting.StartingLifespanMin = 100;
-            initialSetting.StartingLifespanMax = 120;
-            initialSetting.StartingHerbavoreLevelMin = 1;
-            initialSetting.StartingHerbavoreLevelMax = 2;
-            initialSetting.StartingCarnivoreLevelMin = 0;
-            initialSetting.StartingCarnivoreLevelMax = 0;
-            initialSetting.StartingScavengerLevelMin = 0;
-            initialSetting.StartingScavengerLevelMax = 0;
-            initialSetting.StartingOmnivoreLevelMin = 0;
-            initialSetting.StartingOmnivoreLevelMax = 0;
-            initialSetting.StartingColdToleranceMin = 0;
-            initialSetting.StartingColdToleranceMax = 10;
-            initialSetting.StartingHotToleranceMin = 0;
-            initialSetting.StartingHotToleranceMax = 10;
-            initialSetting.StartingEnergy = 425;
+            SetDefaultCreature(ref initialSetting);
 
             WriteCreatureSettings(path, initialSetting);
         }
 
         json = File.ReadAllText(path);
         settings = new JavaScriptSerializer().Deserialize<CreatureSettings>(json);
+
+        return settings;
+    }
+    public static MutationSettings ReadMutationSettings(string path)
+    {
+        MutationSettings settings;
+        string json = String.Empty;
+
+        if (!File.Exists(path))
+        {
+            MutationSettings initialSetting = new MutationSettings();
+
+            SetDefaultMutation(ref initialSetting);
+
+            WriteMutationSettings(path, initialSetting);
+        }
+
+        json = File.ReadAllText(path);
+        settings = new JavaScriptSerializer().Deserialize<MutationSettings>(json);
 
         return settings;
     }
@@ -98,5 +83,75 @@ public class SettingsHelper
     {
         string json = new JavaScriptSerializer().Serialize(settings);
         File.WriteAllText(path, JsonHelper.FormatJson(json));
+    }
+    public static void WriteMutationSettings(string path, MutationSettings settings)
+    {
+        string json = new JavaScriptSerializer().Serialize(settings);
+        File.WriteAllText(path, JsonHelper.FormatJson(json));
+    }
+    public static void SetDefaultWorld(ref GameSettings settingsIn)
+    {
+        settingsIn.WorldSize = 5000;
+        settingsIn.ClimateHeightPercent = 20;
+        settingsIn.StartingFoodRatio = 50f;
+        settingsIn.FoodGenerationValue = 25f;
+        settingsIn.TicksUntilFoodUpgradeStarts = 1800;
+        settingsIn.TicksBetweenFoodUpgrades = 150;
+        settingsIn.StartingCreatureRatio = 50f;
+        settingsIn.FoodUpgradeAmount = 1;
+        settingsIn.FoodUpgradeChancePercent = 20;
+        settingsIn.MaxFoodLevel = 50;
+        settingsIn.EnergyGivenFromFood = 100;
+        settingsIn.EnergyConsumptionFromLayingEgg = 50;
+        settingsIn.EnergyDepletionFromMovement = 10f;
+        settingsIn.CarnivoreLevelBuffer = 5;
+    }
+    public static void SetDefaultCreature(ref CreatureSettings settingsIn)
+    {
+        settingsIn.StartingEggIntervalMin = 40;
+        settingsIn.StartingEggIntervalMax = 50;
+        settingsIn.StartingEggIncubationMin = 40;
+        settingsIn.StartingEggIncubationMax = 80;
+        settingsIn.StartingFoodDigestionMin = 5;
+        settingsIn.StartingFoodDigestionMax = 25;
+        settingsIn.StartingSpeedMin = 5;
+        settingsIn.StartingSpeedMax = 25;
+        settingsIn.StartingLifespanMin = 100;
+        settingsIn.StartingLifespanMax = 120;
+        settingsIn.StartingHerbavoreLevelMin = 1;
+        settingsIn.StartingHerbavoreLevelMax = 2;
+        settingsIn.StartingCarnivoreLevelMin = 0;
+        settingsIn.StartingCarnivoreLevelMax = 0;
+        settingsIn.StartingScavengerLevelMin = 0;
+        settingsIn.StartingScavengerLevelMax = 0;
+        settingsIn.StartingOmnivoreLevelMin = 0;
+        settingsIn.StartingOmnivoreLevelMax = 0;
+        settingsIn.StartingColdToleranceMin = 0;
+        settingsIn.StartingColdToleranceMax = 10;
+        settingsIn.StartingHotToleranceMin = 0;
+        settingsIn.StartingHotToleranceMax = 10;
+        settingsIn.StartingEnergy = 425;
+    }
+    public static void SetDefaultMutation(ref MutationSettings settingsIn)
+    {
+        settingsIn.ChanceToIncreaseValue = 60f;
+        settingsIn.ChangeAmount = 1f;
+        settingsIn.Attraction = 3f;
+        settingsIn.Camo = 3f;
+        settingsIn.Carnivore = 5f;
+        settingsIn.Cloning = 3f;
+        settingsIn.ColdClimateTolerance = 15f;
+        settingsIn.EggCamo = 5f;
+        settingsIn.EggIncubation = 25f;
+        settingsIn.EggInterval = 25f;
+        settingsIn.EggToxicity = 5f;
+        settingsIn.FoodDigestion = 25f;
+        settingsIn.Herbavore = 15f;
+        settingsIn.HotClimateTolerance = 15f;
+        settingsIn.Lifespan = 25f;
+        settingsIn.Omnivore = 5f;
+        settingsIn.Scavenger = 5f;
+        settingsIn.Sight = 3f;
+        settingsIn.Speed = 10f;
     }
 }

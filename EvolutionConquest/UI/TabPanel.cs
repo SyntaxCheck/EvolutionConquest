@@ -14,6 +14,7 @@ public class TabPanel
     public int ActiveTab { get; set; }
     public Button SaveButton { get; set; }
     public Button CloseButton { get; set; }
+    public Button DefaultButton { get; set; }
 
     public TabPanel()
     {

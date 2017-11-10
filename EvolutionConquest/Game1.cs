@@ -52,6 +52,7 @@ namespace EvolutionConquest
         private Texture2D _eggsOnMapTexture;
         private Texture2D _saveButton;
         private Texture2D _closeButton;
+        private Texture2D _defaultButton;
         private TabPanel _settingsTabPanel;
         private Random _rand;
         private int _gameRandSeed;
@@ -120,6 +121,7 @@ namespace EvolutionConquest
             _gameData = new GameData();
             _gameData.Settings = SettingsHelper.ReadSettings("Settings.json");
             _gameData.CreatureSettings = SettingsHelper.ReadCreatureSettings("CreatureSettings.json");
+            _gameData.MutationSettings = SettingsHelper.ReadMutationSettings("MutationSettings.json");
 
             //Init variables after the settings are loaded
             InitVariables();
@@ -139,6 +141,7 @@ namespace EvolutionConquest
             _eggMarkerYellow = Content.Load<Texture2D>("EggMarkerYellow");
             _saveButton = Content.Load<Texture2D>("Save");
             _closeButton = Content.Load<Texture2D>("Close");
+            _defaultButton = Content.Load<Texture2D>("Default");
 
             _foodFont = Content.Load<SpriteFont>("FoodFont");
             _panelHeaderFont = Content.Load<SpriteFont>("ArialBlack");
@@ -215,7 +218,7 @@ namespace EvolutionConquest
             }
 
             //Game start, load in starting population of creatures
-            int startingCreatureAmount = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * (_gameData.Settings.StartingCreatureRatio / 1000000f));
+            int startingCreatureAmount = (int)Math.Ceiling((((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * (_gameData.Settings.StartingCreatureRatio / 1000000f)));
             for (int i = 0; i < startingCreatureAmount; i++)
             {
                 SpawnStartingCreature();
@@ -301,6 +304,17 @@ namespace EvolutionConquest
             bool tick = false;
 
             UpdateHandleInputs(gameTime);
+
+            if (_gameData.ResetGame)
+            {
+                ResetGame(gameTime);
+                _gameData.ResetGame = false;
+            }
+            if (_gameData.BuildSettingsPanel)
+            {
+                BuildSettingsPanel();
+                _gameData.BuildSettingsPanel = false;
+            }
 
             if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < 120)
             {
@@ -1216,7 +1230,7 @@ namespace EvolutionConquest
         {
             if (_gameData.ShowSettingsPanel)
             {
-                int borderWidth = 5;
+                int borderWidth = 2;
                 int tabSpacing = 5;
                 int sliderSpacing = 5;
                 int tabTextHeight = 0;
@@ -1233,10 +1247,12 @@ namespace EvolutionConquest
                 //Draw the tabs
                 for (int i = 0; i < _settingsTabPanel.Tabs.Count; i++)
                 {
-                    Color tabBackgroundColor = Color.White;
+                    Color tabBackgroundColor = new Color(54, 78, 111);
+                    Color textColor = Color.White;
                     if (i == _settingsTabPanel.ActiveTab)
                     {
-                        tabBackgroundColor = Color.Yellow;
+                        tabBackgroundColor = new Color(255,242,157);
+                        textColor = Color.Black;
                     }
 
                     Vector2 tabSize = _panelHeaderFont.MeasureString(_settingsTabPanel.Tabs[i].TabText);
@@ -1248,7 +1264,7 @@ namespace EvolutionConquest
                     _spriteBatch.Draw(_whitePixel, rec, tabBackgroundColor);
                     _settingsTabPanel.Tabs[i].ButtonRectangle = rec;
                     //Draw the text
-                    _spriteBatch.DrawString(_panelHeaderFont, _settingsTabPanel.Tabs[i].TabText, new Vector2(workingXPos + tabSpacing, workingYPos + tabSpacing), Color.Black);
+                    _spriteBatch.DrawString(_panelHeaderFont, _settingsTabPanel.Tabs[i].TabText, new Vector2(workingXPos + tabSpacing, workingYPos + tabSpacing), textColor);
                     //Increment the working variable
                     workingXPos += tabWidth;
 
@@ -1268,6 +1284,10 @@ namespace EvolutionConquest
                 Rectangle saveButtonRec = new Rectangle((_settingsTabPanel.Position.X + _settingsTabPanel.PanelWidth) - borderWidth - tabSpacing - (int)(_settingsTabPanel.SaveButton.Texture.Width * buttonScale) - (int)(_settingsTabPanel.CloseButton.Texture.Width * buttonScale) - (tabSpacing * 2), workingYPos + yCenterSpacing, (int)(_settingsTabPanel.SaveButton.Texture.Width * buttonScale), (int)(_settingsTabPanel.SaveButton.Texture.Height * buttonScale));
                 _settingsTabPanel.SaveButton.ButtonRectangle = saveButtonRec;
                 _spriteBatch.Draw(_settingsTabPanel.SaveButton.Texture, new Vector2(saveButtonRec.X, saveButtonRec.Y), null, Color.White, 0f, Vector2.Zero, buttonScale, SpriteEffects.None, 1f);
+
+                Rectangle defaultButtonRec = new Rectangle((_settingsTabPanel.Position.X + _settingsTabPanel.PanelWidth) - borderWidth - tabSpacing - (int)(_settingsTabPanel.SaveButton.Texture.Width * buttonScale) - (int)(_settingsTabPanel.CloseButton.Texture.Width * buttonScale) - (int)(_settingsTabPanel.DefaultButton.Texture.Width * buttonScale) - (tabSpacing * 3), workingYPos + yCenterSpacing, (int)(_settingsTabPanel.DefaultButton.Texture.Width * buttonScale), (int)(_settingsTabPanel.DefaultButton.Texture.Height * buttonScale));
+                _settingsTabPanel.DefaultButton.ButtonRectangle = defaultButtonRec;
+                _spriteBatch.Draw(_settingsTabPanel.DefaultButton.Texture, new Vector2(defaultButtonRec.X, defaultButtonRec.Y), null, Color.White, 0f, Vector2.Zero, buttonScale, SpriteEffects.None, 1f);
 
                 workingXPos = _settingsTabPanel.Position.X + borderWidth;
                 workingYPos += tabTextHeight + (tabSpacing * 2);
@@ -1519,10 +1539,12 @@ namespace EvolutionConquest
             _settingsTabPanel.Position = new Point(((_graphics.GraphicsDevice.Viewport.Width / 2) - (_settingsTabPanel.PanelWidth / 2)), ((_graphics.GraphicsDevice.Viewport.Height / 2) - (_settingsTabPanel.PanelHeight / 2)));
             _settingsTabPanel.SaveButton = new Button() { Texture = _saveButton };
             _settingsTabPanel.CloseButton = new Button() { Texture = _closeButton };
+            _settingsTabPanel.DefaultButton = new Button() { Texture = _defaultButton };
             //Build Tab section
 
             _settingsTabPanel.Tabs.Add(BuildWorldSettingsTab());
             _settingsTabPanel.Tabs.Add(BuildCreatureSettingsTab());
+            _settingsTabPanel.Tabs.Add(BuildMutationSettingsTab());
 
             _settingsTabPanel.ActiveTab = 0;
         }
@@ -2001,7 +2023,7 @@ namespace EvolutionConquest
             //Herbavore Max
             tmpSlider = new Slider();
             tmpSlider.SliderText = "Herbavore Max";
-            tmpSlider.SliderCode = SettingEnum.StartingHerbavoreLevelMax
+            tmpSlider.SliderCode = SettingEnum.StartingHerbavoreLevelMax;
             tmpSlider.SliderPosition = new Vector2(workingX, workingY);
             tmpSlider.BarWidth = sliderBarWidth;
             tmpSlider.BarHeight = 10;
@@ -2242,6 +2264,383 @@ namespace EvolutionConquest
 
             return worldTab;
         }
+        private Tab BuildMutationSettingsTab()
+        {
+            int sliderSpacing = 5;
+            int sliderBarWidth = 300;
+            int workingX = sliderSpacing;
+            int workingY = sliderSpacing;
+            Tab mutationTab = new Tab();
+            mutationTab.TabNumber = 1;
+            mutationTab.TabText = "Mutation Settings";
+
+            UIControls _uiControls = new UIControls();
+
+            Slider tmpSlider = new Slider();
+            tmpSlider.SliderText = "Chance for Positive Mutation";
+            tmpSlider.SliderCode = SettingEnum.ChanceToIncreaseValue;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.ChanceToIncreaseValue;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Mutation Amount";
+            tmpSlider.SliderCode = SettingEnum.ChangeAmount;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 10;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.ChangeAmount;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Egg Camo";
+            tmpSlider.SliderCode = SettingEnum.EggCamo;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.EggCamo;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Egg Incubation";
+            tmpSlider.SliderCode = SettingEnum.EggIncubation;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.EggIncubation;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Egg Interval";
+            tmpSlider.SliderCode = SettingEnum.EggInterval;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.EggInterval;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Egg Toxicity";
+            tmpSlider.SliderCode = SettingEnum.EggToxicity;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.EggToxicity;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Digestion";
+            tmpSlider.SliderCode = SettingEnum.FoodDigestion;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.FoodDigestion;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Speed";
+            tmpSlider.SliderCode = SettingEnum.Speed;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Speed;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Lifespan";
+            tmpSlider.SliderCode = SettingEnum.Lifespan;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Lifespan;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Sight";
+            tmpSlider.SliderCode = SettingEnum.Sight;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Sight;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Attraction";
+            tmpSlider.SliderCode = SettingEnum.Attraction;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Attraction;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Camo";
+            tmpSlider.SliderCode = SettingEnum.Camo;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Camo;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Cloning";
+            tmpSlider.SliderCode = SettingEnum.Cloning;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Cloning;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Cold Climate Tolerance";
+            tmpSlider.SliderCode = SettingEnum.ColdClimateTolerance;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.ColdClimateTolerance;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Hot Climate Tolerance";
+            tmpSlider.SliderCode = SettingEnum.HotClimateTolerance;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.HotClimateTolerance;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Herbavore";
+            tmpSlider.SliderCode = SettingEnum.Herbavore;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Herbavore;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Carnivore";
+            tmpSlider.SliderCode = SettingEnum.Carnivore;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Carnivore;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Omnivore";
+            tmpSlider.SliderCode = SettingEnum.Omnivore;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Omnivore;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Scavenger";
+            tmpSlider.SliderCode = SettingEnum.Scavenger;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.Scavenger;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            mutationTab.Controls = _uiControls;
+
+            return mutationTab;
+        }
         private void SpawnFood()
         {
             Vector2 position = new Vector2(_rand.Next(_foodTexture.Width, _gameData.Settings.WorldSize - _foodTexture.Width), _rand.Next(_foodTexture.Height, _gameData.Settings.WorldSize - _foodTexture.Height));
@@ -2431,6 +2830,22 @@ namespace EvolutionConquest
                 return _herbavoreTexture;
             }
         }
+        private float CalculateFitness()
+        {
+            float score = 0f;
+
+            float carnivorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentCarnivore);
+            float herbavorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentHerbavore);
+            float scavengerPointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentScavenger);
+            float omnivorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentOmnivore);
+
+            score += 100f - carnivorePointsFromPerfect;
+            score += 100f - herbavorePointsFromPerfect;
+            score += 100f - scavengerPointsFromPerfect;
+            score += 100f - omnivorePointsFromPerfect;
+
+            return score;
+        }
 
         //Debug Creature spawns
         private void SpawnTwoTestCreaturesWithInterceptPaths()
@@ -2587,6 +3002,25 @@ namespace EvolutionConquest
         StartingColdToleranceMax = 120,
         StartingHotToleranceMin = 121,
         StartingHotToleranceMax = 122,
-        StartingEnergy = 123
+        StartingEnergy = 123,
+        ChanceToIncreaseValue = 201,
+        ChangeAmount = 202,
+        EggCamo = 203,
+        EggIncubation = 204,
+        EggInterval = 205,
+        EggToxicity = 206,
+        FoodDigestion = 207,
+        Speed = 208,
+        Lifespan = 209,
+        Sight = 210,
+        Attraction = 211,
+        Camo = 212,
+        Cloning = 213,
+        ColdClimateTolerance = 214,
+        HotClimateTolerance = 215,
+        Herbavore = 216,
+        Carnivore = 217,
+        Omnivore = 218,
+        Scavenger = 219
     }
 }

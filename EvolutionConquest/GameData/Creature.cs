@@ -352,23 +352,23 @@ public class Creature : SpriteBase
         baby.IsLeavingClimate = false;
 
         //Mutations
-        baby.EggCamo = EggCamo + Mutation(rand, 5);
-        baby.EggIncubation = EggIncubation + (Mutation(rand, 25) * 10);
-        baby.EggInterval = EggInterval + (Mutation(rand, 25) * 10);
-        baby.EggToxicity = EggToxicity + Mutation(rand, 5);
-        baby.FoodDigestion = FoodDigestion + (Mutation(rand, 25) * 10);
-        baby.Speed = Speed + Mutation(rand, 10);
-        baby.Lifespan = Lifespan + (Mutation(rand, 25) * 10);
-        baby.Sight = Sight + Mutation(rand, 3);
-        baby.Attraction = Attraction + Mutation(rand, 3);
-        baby.Camo = Camo + Mutation(rand, 3);
-        baby.Cloning = Cloning + Mutation(rand, 3);
-        baby.ColdClimateTolerance = _coldClimateTolerance + Mutation(rand, 15 - _hotClimateTolerance);
-        baby.HotClimateTolerance = _hotClimateTolerance + Mutation(rand, 15 - _coldClimateTolerance);
-        baby.Herbavore = Herbavore + Mutation(rand, 15);
-        baby.Carnivore = Carnivore + Mutation(rand, 5);
-        baby.Omnivore = Omnivore + Mutation(rand, 5);
-        baby.Scavenger = Scavenger + Mutation(rand, 5);
+        baby.EggCamo = EggCamo + Mutation(rand, gameData.MutationSettings.EggCamo, gameData);
+        baby.EggIncubation = EggIncubation + (Mutation(rand, gameData.MutationSettings.EggIncubation, gameData) * 10);
+        baby.EggInterval = EggInterval + (Mutation(rand, gameData.MutationSettings.EggInterval, gameData) * 10);
+        baby.EggToxicity = EggToxicity + Mutation(rand, gameData.MutationSettings.EggToxicity, gameData);
+        baby.FoodDigestion = FoodDigestion + (Mutation(rand, gameData.MutationSettings.FoodDigestion, gameData) * 10);
+        baby.Speed = Speed + Mutation(rand, gameData.MutationSettings.Speed, gameData);
+        baby.Lifespan = Lifespan + (Mutation(rand, gameData.MutationSettings.Lifespan, gameData) * 10);
+        baby.Sight = Sight + Mutation(rand, gameData.MutationSettings.Sight, gameData);
+        baby.Attraction = Attraction + Mutation(rand, gameData.MutationSettings.Attraction, gameData);
+        baby.Camo = Camo + Mutation(rand, gameData.MutationSettings.Camo, gameData);
+        baby.Cloning = Cloning + Mutation(rand, gameData.MutationSettings.Cloning, gameData);
+        baby.ColdClimateTolerance = _coldClimateTolerance + Mutation(rand, gameData.MutationSettings.ColdClimateTolerance - _hotClimateTolerance, gameData);
+        baby.HotClimateTolerance = _hotClimateTolerance + Mutation(rand, gameData.MutationSettings.HotClimateTolerance - _coldClimateTolerance, gameData);
+        baby.Herbavore = Herbavore + Mutation(rand, gameData.MutationSettings.Herbavore, gameData);
+        baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore, gameData);
+        baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore, gameData);
+        baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger, gameData);
 
         if (baby.Herbavore >= baby.Carnivore && baby.Herbavore >= baby.Scavenger && baby.Herbavore >= baby.Omnivore)
         {
@@ -643,7 +643,7 @@ public class Creature : SpriteBase
     }
 
     //Helper functions
-    private float Mutation(Random rand, float mutationChance)
+    private float Mutation(Random rand, float mutationChance, GameData gameData)
     {
         bool didMutationHappen = false;
 
@@ -656,13 +656,13 @@ public class Creature : SpriteBase
 
             if (didMutationHappen)
             {
-                if (rand.Next(0, 10) > 4)
+                if (rand.Next(0, 10) > (10 - gameData.MutationSettings.ChanceToIncreaseValue))
                 {
-                    return 1f;
+                    return gameData.MutationSettings.ChangeAmount;
                 }
                 else
                 {
-                    return -1f;
+                    return gameData.MutationSettings.ChangeAmount * -1;
                 }
             }
         }

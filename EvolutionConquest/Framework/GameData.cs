@@ -7,6 +7,7 @@ public class GameData
 {
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
+    public MutationSettings MutationSettings { get; set; }
     public MapStatistics MapStatistics { get; set; } //Map stats for the top bar on the HUD
     public List<Creature> Creatures { get; set; } //List of creatures on the map
     public List<Creature> DeadCreatures { get; set; } //Used for writing stats at the end
@@ -17,6 +18,8 @@ public class GameData
     public List<SpeciesToCount> ChartData { get; set; }
     public List<SpeciesToCount> ChartDataTop { get; set; }
     public GridData[,] MapGridData { get; set; }
+    public bool ResetGame { get; set; }
+    public bool BuildSettingsPanel { get; set; }
     public bool ShowChart { get; set; }
     public bool ShowControls { get; set; }
     public bool HighlightSpecies { get; set; }
@@ -54,6 +57,8 @@ public class GameData
         ShowFoodStrength = false;
         ShowDebugData = false;
         ShowSettingsPanel = false;
+        ResetGame = false;
+        BuildSettingsPanel = false;
     }
 
     public void CalculateMapStatistics()

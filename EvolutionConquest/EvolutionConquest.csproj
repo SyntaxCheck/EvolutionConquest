@@ -44,6 +44,7 @@
     <Compile Include="DataCollection\ConnectionManager.cs" />
     <Compile Include="DataCollection\GameSettings.cs" />
     <Compile Include="DataCollection\JsonHelper.cs" />
+    <Compile Include="DataCollection\MutationSettings.cs" />
     <Compile Include="DataCollection\SettingsHelper.cs" />
     <Compile Include="Framework\Camera.cs" />
     <Compile Include="Framework\CollisionDetection.cs" />
