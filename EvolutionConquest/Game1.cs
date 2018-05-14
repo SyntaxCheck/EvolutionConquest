@@ -68,7 +68,6 @@ namespace EvolutionConquest
         private float _currentTicksPerSecond = 30;
         private float _tickSeconds;
         private float _elapsedTicksSinceSecondProcessing;
-        private int _speciesIdCounter;
         private Chart _chart;
         private List<string> _controlsListText;
         private int _creatureIdCtr;
@@ -85,6 +84,8 @@ namespace EvolutionConquest
         private const int BORDER_WIDTH = 10;
         private const int GRID_CELL_SIZE = 50; //Seems to be the sweet spot for a 5,000 x 5,000 map based on the texture sizes we have so far
         private const float HUD_ICON_SCALE = 0.375f;
+        private const int MAX_UNDIGESTED_FOOD = 5;
+        private const int EVENT_LOG_DISPLAY_COUNT = 38;
         //GamePlay feature toggles
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
@@ -101,7 +102,7 @@ namespace EvolutionConquest
             _graphics.PreferredBackBufferWidth = 1600;
 
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
-            _writeStats = true;
+            _writeStats = false;
 
             IsMouseVisible = true;
 
@@ -241,6 +242,7 @@ namespace EvolutionConquest
             _controlsListText.Add("[Shift] + [PageUp][PageDown] Cycle Species");
             _controlsListText.Add("[Ctrl] + [PageUp][PageDown] Cycle Creatures");
             _controlsListText.Add("[F1] Toggle Settings Panel");
+            _controlsListText.Add("[F2] Toggle Event Log Panel");
             _controlsListText.Add("[F4] Toggle Herbavore Marker");
             _controlsListText.Add("[F5] Toggle Carnivore Marker");
             _controlsListText.Add("[F6] Toggle Scavenger Marker");
@@ -420,6 +422,10 @@ namespace EvolutionConquest
                 //Check if the creature has died
                 if (_gameData.Creatures[i].ElapsedTicks > _gameData.Creatures[i].Lifespan || (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0))
                 {
+                    int speciesId = _gameData.Creatures[i].SpeciesId;
+                    string speciesName = _gameData.Creatures[i].Species;
+                    string speciesType = _gameData.Creatures[i].GetCreatureTypeText();
+
                     _gameData.Creatures[i].IsAlive = false;
                     if (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0)
                     {
@@ -430,7 +436,7 @@ namespace EvolutionConquest
                         _gameData.Creatures[i].DeathCause = "Age";
                     }
                     _gameData.AddDeadCreatureToList(_gameData.Creatures[i]);
-                    
+
                     //Drop all food on the ground randomly around the area
                     for (int k = 0; k < _gameData.Creatures[i].UndigestedFood; k++)
                     {
@@ -443,6 +449,33 @@ namespace EvolutionConquest
                     }
                     _gameData.RemoveCreatureFromGrid(_gameData.Creatures[i], _gameData.Creatures[i].GridPositions);
                     _gameData.Creatures.RemoveAt(i);
+
+                    //Check to see if this is the last of the species to show in EventLog
+                    bool found = false;
+                    foreach (Creature c in _gameData.Creatures)
+                    {
+                        if (c.SpeciesId == speciesId)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        foreach (Egg egg in _gameData.Eggs)
+                        {
+                            if (egg.Creature.SpeciesId == speciesId)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        _gameData.EventLog.Add(speciesType + " species '" + speciesName + "' has gone extinct");
+                    }
+
                     continue;
                 }
                 //Check if we can lay a new egg
@@ -513,13 +546,12 @@ namespace EvolutionConquest
             _elapsedTicksSinceSecondProcessing = 0;
 
             UpdateOffTickIntervalGraphs(gameTime);
-
             UpdateOffTickIntervalMapStats(gameTime);
         }
         private void UpdateOffTickIntervalGraphs(GameTime gameTime)
         {
             //Generate Graph data
-            _gameData.CalculateChartData(); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
+            _gameData.CalculateChartData(_rand); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
 
             if (_gameData.ShowChart)
             {
@@ -534,19 +566,31 @@ namespace EvolutionConquest
                     {
                         int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
                         string name = String.Empty;
+                        //System.Drawing.Color seriesColor = System.Drawing.Color.White;
+
+                        name = _gameData.ChartDataTop[i].Name;
+
+                        if (name.Length > 15)
+                            name = name.Substring(0, 12) + "...";
+
                         if (count != null)
                         {
-                            name = _gameData.ChartDataTop[i].Name + "(" + count + ")";
+                            name += "(" + count + ")";
                         }
-                        else
+                        if (!String.IsNullOrEmpty(_gameData.ChartDataTop[i].CreatureType))
                         {
-                            name = _gameData.ChartDataTop[i].Name;
+                            name = "(" + _gameData.ChartDataTop[i].CreatureType.Substring(0,1) + ")" + name;
                         }
 
                         _chart.Series.Add(name);
                         _chart.Series[name].XValueType = ChartValueType.Int32;
                         _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
                         _chart.Series[name].BorderWidth = 3;
+                        if (_gameData.ChartDataTop[i].ChartColor != System.Drawing.Color.White)
+                        {
+                            _chart.Series[name].Color = _gameData.ChartDataTop[i].ChartColor;
+                        }
+
                         for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
                         {
                             _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
@@ -591,13 +635,13 @@ namespace EvolutionConquest
                     }
 
                     //Food collision
-                    if (_gameData.Creatures[i].IsHerbavore)
+                    if (_gameData.Creatures[i].IsHerbavore && _gameData.Creatures[i].UndigestedFood < MAX_UNDIGESTED_FOOD)
                     {
                         foreach (Point p in _gameData.Creatures[i].GridPositions)
                         {
                             for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
                             {
-                                if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength)
+                                if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength)
                                 {
                                     if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
                                     {
@@ -612,7 +656,7 @@ namespace EvolutionConquest
                             }
                         }
                     }
-                    else if (_gameData.Creatures[i].IsScavenger) //Scavenger Egg collision
+                    else if (_gameData.Creatures[i].IsScavenger && _gameData.Creatures[i].UndigestedFood < MAX_UNDIGESTED_FOOD) //Scavenger Egg collision
                     {
                         foreach (Point p in _gameData.Creatures[i].GridPositions)
                         {
@@ -633,7 +677,7 @@ namespace EvolutionConquest
                             }
                         }
                     }
-                    else if (_gameData.Creatures[i].IsCarnivore) //Carnivore creature collision
+                    else if (_gameData.Creatures[i].IsCarnivore && _gameData.Creatures[i].UndigestedFood < MAX_UNDIGESTED_FOOD) //Carnivore creature collision
                     {
                         foreach (Point p in _gameData.Creatures[i].GridPositions)
                         {
@@ -661,6 +705,12 @@ namespace EvolutionConquest
                                             tmpCreature.IsAlive = false;
                                             tmpCreature.DeathCause = "Eaten";
 
+                                            if (_gameData.Focus == tmpCreature)
+                                            {
+                                                _gameData.Focus = null;
+                                                _gameData.FocusIndex = -1;
+                                            }
+
                                             deadCreaturesToRemove.Add(tmpCreature);
                                             _gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
                                         }
@@ -676,8 +726,38 @@ namespace EvolutionConquest
 
             foreach (Creature c in deadCreaturesToRemove)
             {
+                int speciesId = c.SpeciesId;
+                string speciesName = c.Species;
+                string speciesType = c.GetCreatureTypeText();
+
                 _gameData.AddDeadCreatureToList(c);
                 _gameData.Creatures.Remove(c);
+
+                //Check to see if this is the last of the species to show in EventLog
+                bool found = false;
+                foreach (Creature ic in _gameData.Creatures)
+                {
+                    if (ic.SpeciesId == speciesId)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    foreach (Egg egg in _gameData.Eggs)
+                    {
+                        if (egg.Creature.SpeciesId == speciesId)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found)
+                {
+                    _gameData.EventLog.Add(speciesType + " species '" + speciesName + "' has gone extinct");
+                }
             }
         }
         private void UpdateOffTickSpawnFood(GameTime gameTime)
@@ -688,6 +768,10 @@ namespace EvolutionConquest
                 _elapsedTimeSinceFoodGeneration -= _foodGenerationIntervalSeconds;
                 SpawnFood();
             }
+        }
+        private void UpdateOffTickEventCheckCleanup(GameTime gameTim)
+        {
+            _gameData.PruneEventLog(EVENT_LOG_DISPLAY_COUNT);
         }
         private void UpdateHandleInputs(GameTime gameTime)
         {
@@ -763,7 +847,7 @@ namespace EvolutionConquest
             {
                 //Move the creature
                 _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * ((_gameData.Creatures[creatureIndex].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].Speed * (_gameData.Settings.EnergyDepletionFromMovement / 1000f);
+                _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].CalculateCreatureEnergyDepletion(_gameData);
                 _gameData.Creatures[creatureIndex].GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
                 if (_gameData.Creatures[creatureIndex].CurrentGridPositionsForCompare != _gameData.Creatures[creatureIndex].OldGridPositionsForCompare)
@@ -944,7 +1028,7 @@ namespace EvolutionConquest
             {
                 if (_gameData.Creatures[i].IsAlive)
                 {
-                    _spriteBatch.Draw(_gameData.Creatures[i].Texture, _gameData.Creatures[i].Position, null, Color.White, _gameData.Creatures[i].Rotation, _gameData.Creatures[i].Origin, 1f, SpriteEffects.None, 1f);
+                    _spriteBatch.Draw(_gameData.Creatures[i].Texture, _gameData.Creatures[i].Position, null, _gameData.Creatures[i].CreatureColor, _gameData.Creatures[i].Rotation, _gameData.Creatures[i].Origin, 1f, SpriteEffects.None, 1f);
                 }
             }
         }
@@ -959,7 +1043,7 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Food.Count; i++)
             {
-                _spriteBatch.Draw(_gameData.Food[i].Texture, _gameData.Food[i].Position, null, Color.White, 0f, _gameData.Food[i].Origin, 1f, SpriteEffects.None, 1f);
+                _spriteBatch.Draw(_gameData.Food[i].Texture, _gameData.Food[i].Position, null, _gameData.Food[i].FoodColor, 0f, _gameData.Food[i].Origin, 1f, SpriteEffects.None, 1f);
                 if (_gameData.ShowFoodStrength)
                 {
                     _spriteBatch.DrawString(_foodFont, _gameData.Food[i].DisplayText, new Vector2(_gameData.Food[i].Position.X, _gameData.Food[i].Position.Y + (_gameData.Food[i].Texture.Height / 2) + (_gameData.Food[i].TextSize.Y / 2)), Color.Black, 0f, new Vector2(_gameData.Food[i].TextSize.X / 2, _gameData.Food[i].TextSize.Y / 2), 1f, SpriteEffects.None, 1f);
@@ -1132,7 +1216,7 @@ namespace EvolutionConquest
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, null, null);
 
             DrawMarkers();
-            DrawCreatureStatsPanel();
+            DrawCreatureStatsOrEventLogPanel();
             DrawMapStatistics();
             DrawControlsPanel();
             DrawChartBorder();
@@ -1142,11 +1226,15 @@ namespace EvolutionConquest
 
             _spriteBatch.End();
         }
-        private void DrawCreatureStatsPanel()
+        private void DrawCreatureStatsOrEventLogPanel()
         {
             if (_gameData.ShowCreatureStats && _gameData.Focus != null)
             {
                 DrawPanelWithText(_panelHeaderFont, "Creature Statistics", _diagFont, _gameData.Focus.GetCreatureInformation(), Global.Anchor.LeftCenter, (int)Math.Ceiling(_diagFont.MeasureString("Position: {X:-100.000000, Y:-100.000000}").X), 0, 20);
+            }
+            else if(_gameData.ShowEventLogPanel && _gameData.EventLog.Count > 0)
+            {
+                DrawPanelWithText(_panelHeaderFont, "Event Log", _diagFont, _gameData.GetEventsForDisplay(EVENT_LOG_DISPLAY_COUNT), Global.Anchor.TopLeft, (int)Math.Ceiling(_diagFont.MeasureString("Species 'Fernandos' has mutated into 'Fransiscos'").X), 0, 20);
             }
         }
         private void DrawMapStatistics()
@@ -1214,7 +1302,7 @@ namespace EvolutionConquest
             }
             else
             {
-                DrawPanelWithText(_panelHeaderFont, String.Empty, _diagFont, new List<string> { "[F11] Show Controls" }, Global.Anchor.TopRight, 0, 0, 20);
+                DrawPanelWithText(_panelHeaderFont, String.Empty, _diagFont, new List<string> { "[F12] Show Controls" }, Global.Anchor.TopRight, 0, 0, 20);
             }
         }
         private void DrawChartBorder()
@@ -1518,7 +1606,6 @@ namespace EvolutionConquest
             _elapsedSecondsSinceTick = 0;
             _elapsedTimeSinceFoodGeneration = 0;
             _elapsedTicksSinceSecondProcessing = 0;
-            _speciesIdCounter = 0;
             _fps = 0;
             _frames = 0;
             _elapsedSeconds = 0.0;
@@ -1610,7 +1697,7 @@ namespace EvolutionConquest
             tmpSlider.MarkerHeight = 20;
             tmpSlider.MarkerWidth = 10;
             tmpSlider.MinValue = 0;
-            tmpSlider.MaxValue = 100;
+            tmpSlider.MaxValue = 500;
             tmpSlider.CurrentValue = _gameData.Settings.StartingFoodRatio;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
@@ -1778,6 +1865,26 @@ namespace EvolutionConquest
             tmpSlider.MinValue = 0;
             tmpSlider.MaxValue = 250;
             tmpSlider.CurrentValue = _gameData.Settings.EnergyDepletionFromMovement;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            //Energy depletion from complexity
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Complexity Energy Loss";
+            tmpSlider.SliderCode = SettingEnum.EnergyDepletionPercentFromComplexity;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.Settings.EnergyDepletionPercentFromComplexity;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
             tmpSlider.Font = _panelHeaderFont;
@@ -2296,7 +2403,7 @@ namespace EvolutionConquest
             workingY += tmpSlider.MarkerHeight + sliderSpacing;
 
             tmpSlider = new Slider();
-            tmpSlider.SliderText = "Mutation Amount";
+            tmpSlider.SliderText = "Mutation Amount Percent";
             tmpSlider.SliderCode = SettingEnum.ChangeAmount;
             tmpSlider.SliderPosition = new Vector2(workingX, workingY);
             tmpSlider.BarWidth = sliderBarWidth;
@@ -2306,6 +2413,25 @@ namespace EvolutionConquest
             tmpSlider.MinValue = 0;
             tmpSlider.MaxValue = 10;
             tmpSlider.CurrentValue = _gameData.MutationSettings.ChangeAmount;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Mutation Bonus Percent";
+            tmpSlider.SliderCode = SettingEnum.MutationBonusPercent;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.MutationBonusPercent;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
             tmpSlider.Font = _panelHeaderFont;
@@ -2382,6 +2508,25 @@ namespace EvolutionConquest
             tmpSlider.MinValue = 0;
             tmpSlider.MaxValue = 100;
             tmpSlider.CurrentValue = _gameData.MutationSettings.EggToxicity;
+            tmpSlider.ShowPercent = true;
+            tmpSlider.FillSlider = true;
+            tmpSlider.Font = _panelHeaderFont;
+            tmpSlider.Initialize(_graphics.GraphicsDevice);
+            _uiControls.Sliders.Add(tmpSlider);
+
+            workingY += tmpSlider.MarkerHeight + sliderSpacing;
+
+            tmpSlider = new Slider();
+            tmpSlider.SliderText = "Food Type";
+            tmpSlider.SliderCode = SettingEnum.FoodType;
+            tmpSlider.SliderPosition = new Vector2(workingX, workingY);
+            tmpSlider.BarWidth = sliderBarWidth;
+            tmpSlider.BarHeight = 10;
+            tmpSlider.MarkerHeight = 20;
+            tmpSlider.MarkerWidth = 10;
+            tmpSlider.MinValue = 0;
+            tmpSlider.MaxValue = 100;
+            tmpSlider.CurrentValue = _gameData.MutationSettings.FoodType;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
             tmpSlider.Font = _panelHeaderFont;
@@ -2681,6 +2826,15 @@ namespace EvolutionConquest
             else
                 food.FoodStrength = 0;
 
+            food.FoodType = _rand.Next(0, 3); //Assign a random type to food
+
+            if (food.FoodType == 0)
+                food.FoodColor = Color.Blue;
+            else if (food.FoodType == 1)
+                food.FoodColor = Color.Red;
+            else
+                food.FoodColor = Color.Green;
+
             food.DisplayText = "(" + food.FoodStrength + ")";
             food.TextSize = _foodFont.MeasureString(food.DisplayText);
 
@@ -2692,15 +2846,13 @@ namespace EvolutionConquest
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
             creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
+            creature.InitNewCreature(_rand, ref _names, _gameData.NextSpeciesId, ref _creatureIdCtr, _gameData);
             creature.Texture = DetermineCreatureTexture(creature);
             creature.Position = new Vector2(_rand.Next(creature.Texture.Width, _gameData.Settings.WorldSize - creature.Texture.Width), _rand.Next(creature.Texture.Height, _gameData.Settings.WorldSize - creature.Texture.Height));
             creature.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
             _gameData.Creatures.Add(creature);
             _gameData.AddCreatureToGrid(creature);
-
-            _speciesIdCounter++;
         }
         private bool CheckForNearestFoodLocation(List<Point> gridPositions, Creature creature, ref Vector2 closest, ref float distance)
         {
@@ -2710,7 +2862,7 @@ namespace EvolutionConquest
             {
                 foreach (Food f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Food)
                 {
-                    if (f.FoodStrength <= creature.Herbavore)
+                    if (f.FoodType == creature.FoodTypeInt && f.FoodStrength <= creature.Herbavore)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
                         if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
@@ -2853,8 +3005,7 @@ namespace EvolutionConquest
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
             creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
-            _speciesIdCounter++;
+            creature.InitNewCreature(_rand, ref _names, _gameData.NextSpeciesId, ref _creatureIdCtr, _gameData);
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
             //creature.Position = new Vector2(210, 100);
@@ -2875,8 +3026,7 @@ namespace EvolutionConquest
             Creature creature2 = new Creature();
             creature2.WorldSize = _gameData.Settings.WorldSize;
             creature2.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            creature2.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
-            _speciesIdCounter++;
+            creature2.InitNewCreature(_rand, ref _names, _gameData.NextSpeciesId, ref _creatureIdCtr, _gameData);
             creature2.Species = "Cheater2";
             creature2.OriginalSpecies = "Cheater2";
             //creature2.Position = new Vector2(10, 100);
@@ -2906,8 +3056,7 @@ namespace EvolutionConquest
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
             creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
-            _speciesIdCounter++;
+            creature.InitNewCreature(_rand, ref _names, _gameData.NextSpeciesId, ref _creatureIdCtr, _gameData);
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
             creature.Position = new Vector2(200, 100);
@@ -2937,8 +3086,7 @@ namespace EvolutionConquest
             Creature creature = new Creature();
             creature.WorldSize = _gameData.Settings.WorldSize;
             creature.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            creature.InitNewCreature(_rand, ref _names, _speciesIdCounter, ref _creatureIdCtr, _gameData);
-            _speciesIdCounter++;
+            creature.InitNewCreature(_rand, ref _names, _gameData.NextSpeciesId, ref _creatureIdCtr, _gameData);
             creature.Species = "Cheater";
             creature.OriginalSpecies = "Cheater";
             creature.Position = new Vector2(200, 100);
@@ -2980,6 +3128,8 @@ namespace EvolutionConquest
         EnergyGivenFromFood = 11,
         EnergyLossFromLayingEgg = 12,
         EnergyDepletionFromMovementRate = 13,
+        FoodType = 14,
+        EnergyDepletionPercentFromComplexity = 15,
         StartingEggIntervalMin = 101,
         StartingEggIntervalMax = 102,
         StartingEggIncubationMin = 103,
@@ -3021,6 +3171,7 @@ namespace EvolutionConquest
         Herbavore = 216,
         Carnivore = 217,
         Omnivore = 218,
-        Scavenger = 219
+        Scavenger = 219,
+        MutationBonusPercent = 220,
     }
 }
