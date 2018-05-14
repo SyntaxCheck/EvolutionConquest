@@ -21,17 +21,17 @@ public class Player
     {
         PlayerIndex playerIndex;
 
-        if (inputState.IsNewKeyPress(Keys.F11, controllingPlayer, out playerIndex))
+        if (inputState.IsNewKeyPress(Keys.F, controllingPlayer, out playerIndex))
         {
-            gameData.ShowChart = !gameData.ShowChart;
+            gameData.HighlightSpecies = !gameData.HighlightSpecies;
         }
         if (inputState.IsNewKeyPress(Keys.F12, controllingPlayer, out playerIndex))
         {
             gameData.ShowControls = !gameData.ShowControls;
         }
-        if (inputState.IsNewKeyPress(Keys.F, controllingPlayer, out playerIndex))
+        if (inputState.IsNewKeyPress(Keys.F11, controllingPlayer, out playerIndex))
         {
-            gameData.HighlightSpecies = !gameData.HighlightSpecies;
+            gameData.ShowChart = !gameData.ShowChart;
         }
         if (inputState.IsNewKeyPress(Keys.F10, controllingPlayer, out playerIndex))
         {
@@ -45,25 +45,29 @@ public class Player
         {
             gameData.ShowDebugData = !gameData.ShowDebugData;
         }
-        if (inputState.IsNewKeyPress(Keys.F3, controllingPlayer, out playerIndex))
+        if (inputState.IsNewKeyPress(Keys.F7, controllingPlayer, out playerIndex))
         {
-            gameData.EggMarkers = !gameData.EggMarkers;
-        }
-        if (inputState.IsNewKeyPress(Keys.F4, controllingPlayer, out playerIndex))
-        {
-            gameData.HerbavoreMarkers = !gameData.HerbavoreMarkers;
-        }
-        if (inputState.IsNewKeyPress(Keys.F5, controllingPlayer, out playerIndex))
-        {
-            gameData.CarnivoreMarkers = !gameData.CarnivoreMarkers;
+            gameData.OmnivoreMarkers = !gameData.OmnivoreMarkers;
         }
         if (inputState.IsNewKeyPress(Keys.F6, controllingPlayer, out playerIndex))
         {
             gameData.ScavengerMarkers = !gameData.ScavengerMarkers;
         }
-        if (inputState.IsNewKeyPress(Keys.F7, controllingPlayer, out playerIndex))
+        if (inputState.IsNewKeyPress(Keys.F5, controllingPlayer, out playerIndex))
         {
-            gameData.OmnivoreMarkers = !gameData.OmnivoreMarkers;
+            gameData.CarnivoreMarkers = !gameData.CarnivoreMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F4, controllingPlayer, out playerIndex))
+        {
+            gameData.HerbavoreMarkers = !gameData.HerbavoreMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F3, controllingPlayer, out playerIndex))
+        {
+            gameData.EggMarkers = !gameData.EggMarkers;
+        }
+        if (inputState.IsNewKeyPress(Keys.F2, controllingPlayer, out playerIndex))
+        {
+            gameData.ShowEventLogPanel = !gameData.ShowEventLogPanel;
         }
         if (inputState.IsNewKeyPress(Keys.F1, controllingPlayer, out playerIndex))
         {
@@ -102,6 +106,7 @@ public class Player
                     gameData.Settings.EnergyGivenFromFood = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyGivenFromFood).First().CurrentValue;
                     gameData.Settings.EnergyConsumptionFromLayingEgg = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyLossFromLayingEgg).First().CurrentValue;
                     gameData.Settings.EnergyDepletionFromMovement = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyDepletionFromMovementRate).First().CurrentValue;
+                    gameData.Settings.EnergyDepletionPercentFromComplexity = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyDepletionPercentFromComplexity).First().CurrentValue;
 
                     //Tab 1 - Creature settings
                     gameData.CreatureSettings.StartingEggIntervalMin = (int)tabPanel.Tabs[1].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.StartingEggIntervalMin).First().CurrentValue;
@@ -133,12 +138,14 @@ public class Player
                     gameData.MutationSettings.Carnivore = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.Carnivore).First().CurrentValue;
                     gameData.MutationSettings.ChanceToIncreaseValue = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.ChanceToIncreaseValue).First().CurrentValue;
                     gameData.MutationSettings.ChangeAmount = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.ChangeAmount).First().CurrentValue;
+                    gameData.MutationSettings.MutationBonusPercent = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.MutationBonusPercent).First().CurrentValue;
                     gameData.MutationSettings.Cloning = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.Cloning).First().CurrentValue;
                     gameData.MutationSettings.ColdClimateTolerance = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.ColdClimateTolerance).First().CurrentValue;
                     gameData.MutationSettings.EggCamo = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.EggCamo).First().CurrentValue;
                     gameData.MutationSettings.EggIncubation = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.EggIncubation).First().CurrentValue;
                     gameData.MutationSettings.EggInterval = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.EggInterval).First().CurrentValue;
                     gameData.MutationSettings.EggToxicity = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.EggToxicity).First().CurrentValue;
+                    gameData.MutationSettings.FoodType = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.FoodType).First().CurrentValue;
                     gameData.MutationSettings.FoodDigestion = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.FoodDigestion).First().CurrentValue;
                     gameData.MutationSettings.Herbavore = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.Herbavore).First().CurrentValue;
                     gameData.MutationSettings.HotClimateTolerance = (int)tabPanel.Tabs[2].Controls.Sliders.Where(t => t.SliderCode == SettingEnum.HotClimateTolerance).First().CurrentValue;
@@ -257,6 +264,8 @@ public class Player
                 return gameData.Settings.EnergyConsumptionFromLayingEgg;
             case SettingEnum.EnergyDepletionFromMovementRate:
                 return gameData.Settings.EnergyDepletionFromMovement;
+            case SettingEnum.EnergyDepletionPercentFromComplexity:
+                return gameData.Settings.EnergyDepletionPercentFromComplexity;
             case SettingEnum.StartingEggIntervalMin:
                 return gameData.CreatureSettings.StartingEggIntervalMin;
             case SettingEnum.StartingEggIntervalMax:

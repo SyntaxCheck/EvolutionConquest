@@ -5,6 +5,11 @@ using System.Linq;
 
 public class GameData
 {
+    private int nextSpeciesId;
+    private int topSpeciesId; //ID for the species with the most creatures
+    private int topSpeciesCount; //The count when this was last calculated
+    private string topSpeciesName; //Text species name for the species with the most creatures
+
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
     public MutationSettings MutationSettings { get; set; }
@@ -17,7 +22,20 @@ public class GameData
     public int FocusIndex { get; set; } //Camera focus index, this value is used when Paging between Creatures
     public List<SpeciesToCount> ChartData { get; set; }
     public List<SpeciesToCount> ChartDataTop { get; set; }
+    public List<string> EventLog { get; set; } //Log of events that occur so that it is easier to follow what is happening in game
     public GridData[,] MapGridData { get; set; }
+    public int NextSpeciesId
+    {
+        get
+        {
+            nextSpeciesId = nextSpeciesId + 1;
+            return nextSpeciesId;
+        }
+        set
+        {
+            nextSpeciesId = value;
+        }
+    }
     public bool ResetGame { get; set; }
     public bool BuildSettingsPanel { get; set; }
     public bool ShowChart { get; set; }
@@ -32,6 +50,7 @@ public class GameData
     public bool ShowFoodStrength { get; set; }
     public bool ShowDebugData { get; set; }
     public bool ShowSettingsPanel { get; set; }
+    public bool ShowEventLogPanel { get; set; }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
 
@@ -40,12 +59,15 @@ public class GameData
         MapStatistics = new MapStatistics();
         ChartData = new List<SpeciesToCount>();
         ChartDataTop = new List<SpeciesToCount>();
+        EventLog = new List<string>();
+        EventLog.Add("Game Started!");
         Creatures = new List<Creature>();
         DeadCreatures = new List<Creature>();
         Eggs = new List<Egg>();
         Food = new List<Food>();
         Focus = null; //Init the focus to null to not follow any creatures
         FocusIndex = -1;
+        nextSpeciesId = 0;
         ShowChart = true;
         ShowControls = true;
         HighlightSpecies = false;
@@ -59,6 +81,9 @@ public class GameData
         ShowSettingsPanel = false;
         ResetGame = false;
         BuildSettingsPanel = false;
+        ShowEventLogPanel = true;
+        topSpeciesId = 0;
+        topSpeciesName = String.Empty;
     }
 
     public void CalculateMapStatistics()
@@ -90,24 +115,29 @@ public class GameData
     {
         return Creatures.Select(o => o.Species).Distinct().Count();
     }
-    public void InitializeChartData()
+    public void InitializeChartData(Random _rand)
     {
         //Initialization
         for (int i = 0; i < Creatures.Count; i++)
         {
             SpeciesToCount sc = new SpeciesToCount();
+            sc.Rand = _rand;
             sc.Name = Creatures[i].Species;
+            sc.CreatureType = Creatures[i].GetCreatureTypeText();
             sc.Id = Creatures[i].SpeciesId;
             sc.CountsOverTime.Add(1);
 
             ChartData.Add(sc);
+
+            if (sc.Id == 0)
+                topSpeciesName = sc.Name;
         }
     }
-    public void CalculateChartData()
+    public void CalculateChartData(Random _rand)
     {
         if (ChartData.Count == 0)
         {
-            InitializeChartData();
+            InitializeChartData(_rand);
         }
         else
         {
@@ -134,7 +164,9 @@ public class GameData
                 if (!found) //New Species was introduced, we need to fill the data so the StackedArea chart does not complain
                 {
                     SpeciesToCount sc = new SpeciesToCount();
+                    sc.Rand = _rand;
                     sc.Name = c.Species;
+                    sc.CreatureType = c.GetCreatureTypeText();
                     sc.Id = c.SpeciesId;
 
                     ChartData.Add(sc);
@@ -150,6 +182,11 @@ public class GameData
             //Cleanup ChartData for Species that are Extinct
             for (int i = ChartData.Count - 1; i >= 0; i--)
             {
+                //Update the top count while searching for extinct species
+                if (ChartData[i].Id == topSpeciesId)
+                {
+                    topSpeciesCount = ChartData[i].CountsOverTime[ChartData[i].CountsOverTime.Count - 1];
+                }
                 if (ChartData[i].CountsOverTime[ChartData[i].CountsOverTime.Count - 1] == 0)
                 {
                     //Make sure that the species does not have a creature in an egg before removing
@@ -198,6 +235,16 @@ public class GameData
             for (int i = 0; i < countToGet; i++)
             {
                 ChartDataTop.Add(topList[i]);
+            }
+
+            //Check to see if we have a new species lead
+            int checkedSpeciesCount = topList[0].CountsOverTime[topList[0].CountsOverTime.Count - 1];
+            if (checkedSpeciesCount > topSpeciesCount)
+            {
+                if(topSpeciesId != topList[0].Id)
+                topSpeciesCount = checkedSpeciesCount;
+                topSpeciesId = topList[0].Id;
+                topSpeciesName = topList[0].Name;
             }
         }
     }
@@ -263,6 +310,37 @@ public class GameData
         foreach (Point p in toBeRemoved)
         {
             MapGridData[p.X, p.Y].Eggs.Remove(egg);
+        }
+    }
+    public List<string> GetEventsForDisplay(int countToDisplay)
+    {
+        List<string> logText = new List<string>();
+        int startingPos = 0;
+
+        startingPos = EventLog.Count - countToDisplay;
+
+        if (startingPos < 0)
+        {
+            return EventLog;
+        }
+        else
+        {
+            for (int i = startingPos; i < EventLog.Count; i++)
+            {
+                logText.Add(EventLog[i]);
+            }
+
+            return logText;
+        }
+    }
+    public void PruneEventLog(int countToKeep)
+    {
+        if (EventLog.Count > countToKeep)
+        {
+            for (int i = 0; i < (EventLog.Count - countToKeep); i++)
+            {
+                EventLog.RemoveAt(0);
+            }
         }
     }
 }

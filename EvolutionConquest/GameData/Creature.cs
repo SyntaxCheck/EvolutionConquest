@@ -62,13 +62,55 @@ public class Creature : SpriteBase
     } //Food count waiting to be digested
     public int DigestedFood { get; set; } //Food count that has been digested
     public float FoodDigestion { get; set; } //How quickly food can be digested and converted into an egg, Also the longer it takes the more Energy the food will give
+    public float FoodTypeBlue { get; set; } //Food Type blue level, if this is higher than Red or Green then the creature can only eat this type
+    public float FoodTypeRed { get; set; } //Food Type red level, if this is higher than Blue or Green then the creature can only eat this type
+    public float FoodTypeGreen { get; set; } //Food Type green level, if this is higher than Red or Blue then the creature can only eat this type
+    public string FoodType
+    {
+        get
+        {
+            if (FoodTypeBlue > FoodTypeRed && FoodTypeBlue > FoodTypeGreen)
+            {
+                return "Blue";
+            }
+            else if (FoodTypeRed > FoodTypeBlue && FoodTypeRed > FoodTypeGreen)
+            {
+                return "Red";
+            }
+            else
+            {
+                return "Green";
+            }
+        }
+    }
+    public int FoodTypeInt
+    {
+        get
+        {
+            if (FoodTypeBlue > FoodTypeRed && FoodTypeBlue > FoodTypeGreen)
+            {
+                return 0;
+            }
+            else if (FoodTypeRed > FoodTypeBlue && FoodTypeRed > FoodTypeGreen)
+            {
+                return 1;
+            }
+            else
+            {
+                return 2;
+            }
+        }
+    }
+    public Color CreatureColor { get; set; }
     public int TotalFoodEaten { get; set; } //Statistical count of how many food were eaten
     public int TicksSinceLastEgg { get; set; } //The amount of Game Ticks since the last egg was created
     public int TicksSinceLastDigestedFood { get; set; } //The amount of Game Ticks since the last food was digested
     public float EggInterval { get; set; } //How ofter an egg can be output
     public float EggIncubation { get; set; } //How long it takes for the egg to hatch once created
     public float EggIncubationActual { get; set; } //This is calculated based on their species level, if the creature is a herbavore add Herbavore * 10
+    //NOT IMPLEMENTED
     public float EggCamo { get; set; } //How well the egg is hidden from Scavengers
+    //NOT IMPLEMENTED
     public float EggToxicity { get; set; } //How toxic the egg is to other creatures
     public int EggsCreated { get; set; }
     public float Speed { get; set; } //How quickly the creature moved through the world
@@ -78,6 +120,7 @@ public class Creature : SpriteBase
     public float Sight { get; set; } //Allows the creature to adjust path if target is within this many units
     public int TicksSinceLastVisionCheck { get; set; } //How long since we evaluated vision
     public int TicksBetweenVisionChecks { get; set; } //How many ticks go by before we can evaluate sight 
+    //NOT IMPLEMENTED
     public float Attraction { get; set; }
     public float Herbavore { get; set; } //This controls how strong of food the creature can eat. The food strength simulates food that is difficult to eat or hard to reach. This encourages positive mutations to reach stronger food
     public float Carnivore { get; set; } //Can eat other creatures with Carnivore level of (Carnivore lvl / 2 - 5) or less. This will be the only means of food
@@ -87,7 +130,9 @@ public class Creature : SpriteBase
     public bool IsScavenger { get; set; }
     public bool IsOmnivore { get; set; } //Probably no point to this since we also mark the IsHerb and IsCarn flags as well
     public float Scavenger { get; set; } //Can eat other creatures eggs including Scavenger eggs. This will be the only means of food
+    //NOT IMPLEMENTED
     public float Camo { get; set; } //Hidden from all creatures with a Camo level less than your level
+    //NOT IMPLEMENTED
     public float Cloning { get; set; } //Chance for Spontaneous cloning to occur
     public float ColdClimateTolerance
     {
@@ -164,7 +209,7 @@ public class Creature : SpriteBase
         IsChangingSpecies = false;
         NewSpeciesName = String.Empty;
         SpeciesId = speciesId;
-        Species = names.GetRandomName(rand);
+        Species = names.GetRandomNameWithUniqueSpeciesLetter(rand, gameData);
         OriginalSpeciesId = SpeciesId;
         OriginalSpecies = Species;
         SpeciesStrain = String.Empty;
@@ -201,6 +246,24 @@ public class Creature : SpriteBase
         TicksInColdClimate = 0;
         TicksInHotClimate = 0;
         EggIncubationActual = EggIncubation + (Herbavore * 10);
+        FoodTypeBlue = 0;
+        FoodTypeRed = 0;
+        FoodTypeGreen = 0;
+        CreatureColor = Color.White;
+
+        int foodTypeRand = rand.Next(0,3);
+        switch (foodTypeRand)
+        {
+            case 0:
+                FoodTypeBlue = 5;
+                break;
+            case 1:
+                FoodTypeRed = 5;
+                break;
+            default:
+                FoodTypeGreen = 5;
+                break;
+        }
 
         bool isHerb, isCarn, isScav, isOmni;
         DetermineCreatureType(Herbavore, Carnivore, Scavenger, Omnivore, out isHerb, out isCarn, out isScav, out isOmni);
@@ -208,6 +271,8 @@ public class Creature : SpriteBase
         IsCarnivore = isCarn;
         IsScavenger = isScav;
         IsOmnivore = isOmni;
+
+        SetCreatureColor();
 
         foreach (Creature c in gameData.Creatures)
         {
@@ -314,8 +379,25 @@ public class Creature : SpriteBase
     }
     public Egg LayEgg(Random rand, ref Names names, GameData gameData, ref int creatureIdCtr)
     {
+        int carnivoreMutationBonus = 0;
+        int scavengerMutationBonus = 0;
+        int omnivoreMutationBonus = 0;
         Egg egg = new Egg();
         Creature baby = new Creature();
+
+        //No boost for Herbavore since all creatures start out as Herbavore
+        if (IsCarnivore)
+        {
+            carnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Carnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+        }
+        else if (IsScavenger)
+        {
+            scavengerMutationBonus = (int)Math.Round(gameData.MutationSettings.Scavenger * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+        }
+        else if (IsOmnivore)
+        {
+            omnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Omnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+        }
 
         TicksSinceLastEgg = 0;
         EggsCreated++;
@@ -357,6 +439,9 @@ public class Creature : SpriteBase
         baby.EggInterval = EggInterval + (Mutation(rand, gameData.MutationSettings.EggInterval, gameData) * 10);
         baby.EggToxicity = EggToxicity + Mutation(rand, gameData.MutationSettings.EggToxicity, gameData);
         baby.FoodDigestion = FoodDigestion + (Mutation(rand, gameData.MutationSettings.FoodDigestion, gameData) * 10);
+        baby.FoodTypeBlue = FoodTypeBlue + (Mutation(rand, gameData.MutationSettings.FoodType, gameData) * 10);
+        baby.FoodTypeRed = FoodTypeRed + (Mutation(rand, gameData.MutationSettings.FoodType, gameData) * 10);
+        baby.FoodTypeGreen = FoodTypeGreen + (Mutation(rand, gameData.MutationSettings.FoodType, gameData) * 10);
         baby.Speed = Speed + Mutation(rand, gameData.MutationSettings.Speed, gameData);
         baby.Lifespan = Lifespan + (Mutation(rand, gameData.MutationSettings.Lifespan, gameData) * 10);
         baby.Sight = Sight + Mutation(rand, gameData.MutationSettings.Sight, gameData);
@@ -366,9 +451,9 @@ public class Creature : SpriteBase
         baby.ColdClimateTolerance = _coldClimateTolerance + Mutation(rand, gameData.MutationSettings.ColdClimateTolerance - _hotClimateTolerance, gameData);
         baby.HotClimateTolerance = _hotClimateTolerance + Mutation(rand, gameData.MutationSettings.HotClimateTolerance - _coldClimateTolerance, gameData);
         baby.Herbavore = Herbavore + Mutation(rand, gameData.MutationSettings.Herbavore, gameData);
-        baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore, gameData);
-        baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore, gameData);
-        baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger, gameData);
+        baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore + carnivoreMutationBonus, gameData);
+        baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore + omnivoreMutationBonus, gameData);
+        baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger + scavengerMutationBonus, gameData);
 
         if (baby.Herbavore >= baby.Carnivore && baby.Herbavore >= baby.Scavenger && baby.Herbavore >= baby.Omnivore)
         {
@@ -403,17 +488,21 @@ public class Creature : SpriteBase
             baby.EggIncubationActual = baby.EggIncubation + (baby.Omnivore * 10);
         }
 
+        baby.SetCreatureColor();
+
         //Only iterate the Species/Strain if something that can Mutate has changed
         if (!IsSameAs(baby))
         {
-            if (IsChangingSpecies || SpeciesStrain.Replace(" ", "").Length > 50) //New Species once the Strain goes past 50 different strains
+            if (IsChangingSpecies || SpeciesStrain.Replace(" ", "").Length > 150 || GetCreatureTypeInt() != baby.GetCreatureTypeInt()) //New Species once the Strain goes past 150 different strains or the creature is now a new type
             {
                 if (!IsChangingSpecies)
                 {
-                    NewSpeciesName = names.GetRandomName(rand);
-                    NewSpeciesId = gameData.Creatures.Max(t => t.SpeciesId) + 1;
+                    NewSpeciesName = names.GetRandomName(rand, Species);
+                    NewSpeciesId = gameData.NextSpeciesId;
                     IsChangingSpecies = true;
                 }
+
+                //gameData.EventLog.Add("Species '" + Species + "' has mutated into '" + NewSpeciesName + "'");
 
                 baby.Species = NewSpeciesName;
                 baby.SpeciesId = NewSpeciesId;
@@ -482,6 +571,7 @@ public class Creature : SpriteBase
         info.Add("Age: " + Math.Round(ElapsedTicks / 10.0, 1).ToString());
         info.Add("Energy: " + Energy);
         info.Add(" ");
+        info.Add("Food Type: " + FoodType);
         info.Add("Food: " + UndigestedFood);
         info.Add("Food Digested: " + DigestedFood);
         info.Add("Last Digested: " + Math.Round(TicksSinceLastDigestedFood / 10.0, 1).ToString());
@@ -538,6 +628,7 @@ public class Creature : SpriteBase
             "OriginalSpeciesID," +
             "OriginalSpeciesName," +
             "Generation," +
+            "FoodType," +
             "FoodDigestionRate," +
             "EggInterval," +
             "EggIncubation," +
@@ -573,6 +664,7 @@ public class Creature : SpriteBase
         creatureSql += OriginalSpeciesId + ",";
         creatureSql += "'" + OriginalSpecies + "',";
         creatureSql += Generation + ",";
+        creatureSql += "'" + FoodType + "',";
         creatureSql += Math.Round(FoodDigestion, 4) + ",";
         creatureSql += Math.Round(EggInterval, 4) + ",";
         creatureSql += Math.Round(EggIncubation, 4) + ",";
@@ -641,6 +733,21 @@ public class Creature : SpriteBase
 
         return 0;
     }
+    public float CalculateCreatureEnergyDepletion(GameData gameData)
+    {
+        float calculatedEnergyLoss = 0f;
+        float depletionFromMovement = gameData.Settings.EnergyDepletionFromMovement;
+
+        //Having sight will increase the speed in which energy depletes based on the world setting and their Sight level. If the setting is 50% increase in energy consumption and the sight level is 10 then it will result in a 60% increase to energy lost
+        if (Sight > 0)
+        {
+            depletionFromMovement = depletionFromMovement + (depletionFromMovement * ((gameData.Settings.EnergyDepletionPercentFromComplexity + Sight) / 100f));
+        }
+
+        calculatedEnergyLoss = Speed * (depletionFromMovement / 1000f);
+
+        return calculatedEnergyLoss;
+    }
 
     //Helper functions
     private float Mutation(Random rand, float mutationChance, GameData gameData)
@@ -708,7 +815,7 @@ public class Creature : SpriteBase
             Cloning != compareCreature.Cloning || HotClimateTolerance != compareCreature.HotClimateTolerance ||
             ColdClimateTolerance != compareCreature.ColdClimateTolerance || Herbavore != compareCreature.Herbavore ||
             Carnivore != compareCreature.Carnivore || Scavenger != compareCreature.Scavenger ||
-            Omnivore != compareCreature.Omnivore)
+            Omnivore != compareCreature.Omnivore || FoodType != compareCreature.FoodType)
             return false;
 
         return true;
@@ -736,6 +843,9 @@ public class Creature : SpriteBase
             differenceAmount += Math.Abs(compareCreature1.Carnivore - compareCreature2.Carnivore);
             differenceAmount += Math.Abs(compareCreature1.Omnivore - compareCreature2.Omnivore);
             differenceAmount += Math.Abs(compareCreature1.Scavenger - compareCreature2.Scavenger);
+
+            if (compareCreature1.FoodType != compareCreature2.FoodType)
+                differenceAmount += 3; //3 points since there are 3 different types of food and eating a different type of food should have a high weight
         }
         else
         {
@@ -789,6 +899,9 @@ public class Creature : SpriteBase
         if (creature.Carnivore < 0) creature.Carnivore = 0;
         if (creature.Omnivore < 0) creature.Omnivore = 0;
         if (creature.Scavenger < 0) creature.Scavenger = 0;
+        if (creature.FoodTypeBlue < 0) creature.FoodTypeBlue = 0;
+        if (creature.FoodTypeRed < 0) creature.FoodTypeRed = 0;
+        if (creature.FoodTypeGreen < 0) creature.FoodTypeGreen = 0;
     }
     private void DetermineCreatureType(float herbavore, float carnivore, float scavenger, float omnivore, out bool isHerbavore, out bool isCarnivore, out bool isScavenger, out bool isOmnivore)
     {
@@ -826,6 +939,62 @@ public class Creature : SpriteBase
             isCarnivore = false;
             isScavenger = false;
             isOmnivore = false;
+        }
+    }
+    public int GetCreatureTypeInt()
+    {
+        if (IsOmnivore)
+            return 0;
+        else if (IsHerbavore)
+            return 1;
+        else if (IsCarnivore)
+            return 2;
+        else
+            return 3;
+    }
+    public string GetCreatureTypeText()
+    {
+        string creatureType = String.Empty;
+        int creatureInt = GetCreatureTypeInt();
+
+        switch (creatureInt)
+        {
+            case 0:
+                creatureType = "Omnivore";
+                break;
+            case 1:
+                creatureType = "Herbavore";
+                break;
+            case 2:
+                creatureType = "Carnivore";
+                break;
+            default:
+                creatureType = "Scavenger";
+                break;
+        }
+
+        return creatureType;
+    }
+    private void SetCreatureColor()
+    {
+        if (IsHerbavore)
+        {
+            switch (FoodTypeInt)
+            {
+                case 0:
+                    CreatureColor = Color.LightBlue;
+                    break;
+                case 1:
+                    CreatureColor = Color.Salmon;
+                    break;
+                default:
+                    CreatureColor = Color.LightGreen;
+                    break;
+            }
+        }
+        else
+        {
+            CreatureColor = Color.White;
         }
     }
 }

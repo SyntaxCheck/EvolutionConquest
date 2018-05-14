@@ -19,6 +19,7 @@ create table Creatures
 	OriginalSpeciesID int not null,
 	OriginalSpeciesName varchar(200) not null,
 	Generation int not null,
+	FoodType varchar(10) not null,
 	FoodDigestionRate numeric(9,4) not null,
 	EggInterval numeric(9,4) not null,
 	EggIncubation numeric(9,4) not null,

@@ -93,17 +93,18 @@ public class SettingsHelper
     {
         settingsIn.WorldSize = 5000;
         settingsIn.ClimateHeightPercent = 20;
-        settingsIn.StartingFoodRatio = 50f;
+        settingsIn.StartingFoodRatio = 200f;
         settingsIn.FoodGenerationValue = 25f;
         settingsIn.TicksUntilFoodUpgradeStarts = 1800;
         settingsIn.TicksBetweenFoodUpgrades = 150;
-        settingsIn.StartingCreatureRatio = 50f;
+        settingsIn.StartingCreatureRatio = 10f;
         settingsIn.FoodUpgradeAmount = 1;
         settingsIn.FoodUpgradeChancePercent = 20;
         settingsIn.MaxFoodLevel = 50;
         settingsIn.EnergyGivenFromFood = 100;
         settingsIn.EnergyConsumptionFromLayingEgg = 50;
         settingsIn.EnergyDepletionFromMovement = 10f;
+        settingsIn.EnergyDepletionPercentFromComplexity = 50f;
         settingsIn.CarnivoreLevelBuffer = 5;
     }
     public static void SetDefaultCreature(ref CreatureSettings settingsIn)
@@ -136,6 +137,7 @@ public class SettingsHelper
     {
         settingsIn.ChanceToIncreaseValue = 60f;
         settingsIn.ChangeAmount = 1f;
+        settingsIn.MutationBonusPercent = 50f;
         settingsIn.Attraction = 3f;
         settingsIn.Camo = 3f;
         settingsIn.Carnivore = 5f;
@@ -153,5 +155,6 @@ public class SettingsHelper
         settingsIn.Scavenger = 5f;
         settingsIn.Sight = 3f;
         settingsIn.Speed = 10f;
+        settingsIn.FoodType = 10f;
     }
 }

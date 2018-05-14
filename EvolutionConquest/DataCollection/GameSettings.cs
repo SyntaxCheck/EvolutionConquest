@@ -25,6 +25,7 @@ public class GameSettings
     public float EnergyGivenFromFood { get; set; }
     public float EnergyConsumptionFromLayingEgg { get; set; }
     public float EnergyDepletionFromMovement { get; set; }
+    public float EnergyDepletionPercentFromComplexity { get; set; }
     public int CarnivoreLevelBuffer { get; set; }
 
     public GameSettings()

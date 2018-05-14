@@ -257,22 +257,25 @@ public class Camera
             }
             else if (inputState.IsKeyPressed(Keys.LeftControl, controllingPlayer, out playerIndex))
             {
-                int speciesId = gameData.Creatures[gameData.FocusIndex].SpeciesId;
-                int searchIndex = gameData.FocusIndex;
-
-                bool found = false;
-                while (!found)
+                if (gameData.FocusIndex >= 0 && gameData.Creatures[gameData.FocusIndex].IsAlive)
                 {
-                    if (searchIndex > 0)
-                        searchIndex--;
-                    else
-                        searchIndex = gameData.Creatures.Count - 1;
+                    int speciesId = gameData.Creatures[gameData.FocusIndex].SpeciesId;
+                    int searchIndex = gameData.FocusIndex;
 
-                    if (gameData.Creatures[searchIndex].SpeciesId == speciesId)
+                    bool found = false;
+                    while (!found)
                     {
-                        found = true;
-                        gameData.FocusIndex = searchIndex;
-                        gameData.Focus = gameData.Creatures[gameData.FocusIndex];
+                        if (searchIndex > 0)
+                            searchIndex--;
+                        else
+                            searchIndex = gameData.Creatures.Count - 1;
+
+                        if (gameData.Creatures[searchIndex].SpeciesId == speciesId)
+                        {
+                            found = true;
+                            gameData.FocusIndex = searchIndex;
+                            gameData.Focus = gameData.Creatures[gameData.FocusIndex];
+                        }
                     }
                 }
             }

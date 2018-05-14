@@ -8,6 +8,7 @@ public class MutationSettings
 {
     public float ChanceToIncreaseValue {get; set;}
     public float ChangeAmount {get; set;}
+    public float MutationBonusPercent {get; set;}
     public float EggCamo {get; set;}
     public float EggIncubation {get; set;}
     public float EggInterval {get; set;}
@@ -25,6 +26,8 @@ public class MutationSettings
     public float Carnivore {get; set;}
     public float Omnivore {get; set;}
     public float Scavenger {get; set;}
+    public float FoodType {get; set;}
+
     public MutationSettings()
     {
     }
