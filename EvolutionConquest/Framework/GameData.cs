@@ -9,6 +9,8 @@ public class GameData
     private int topSpeciesId; //ID for the species with the most creatures
     private int topSpeciesCount; //The count when this was last calculated
     private string topSpeciesName; //Text species name for the species with the most creatures
+    private bool initialThreshholdForTopSpeciesLogged;
+    private int initialThreshhold = 5;
 
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
@@ -82,7 +84,7 @@ public class GameData
         ResetGame = false;
         BuildSettingsPanel = false;
         ShowEventLogPanel = true;
-        topSpeciesId = 0;
+        topSpeciesId = -1;
         topSpeciesName = String.Empty;
     }
 
@@ -128,9 +130,6 @@ public class GameData
             sc.CountsOverTime.Add(1);
 
             ChartData.Add(sc);
-
-            if (sc.Id == 0)
-                topSpeciesName = sc.Name;
         }
     }
     public void CalculateChartData(Random _rand)
@@ -239,12 +238,28 @@ public class GameData
 
             //Check to see if we have a new species lead
             int checkedSpeciesCount = topList[0].CountsOverTime[topList[0].CountsOverTime.Count - 1];
-            if (checkedSpeciesCount > topSpeciesCount)
+
+            if (checkedSpeciesCount > initialThreshhold)
             {
-                if(topSpeciesId != topList[0].Id)
-                topSpeciesCount = checkedSpeciesCount;
-                topSpeciesId = topList[0].Id;
-                topSpeciesName = topList[0].Name;
+                initialThreshholdForTopSpeciesLogged = true;
+            }
+
+            if (initialThreshholdForTopSpeciesLogged)
+            {
+                if (checkedSpeciesCount > topSpeciesCount)
+                {
+                    if (topSpeciesId != topList[0].Id)
+                    {
+                        if (!String.IsNullOrEmpty(topSpeciesName))
+                            EventLog.Add(topSpeciesName + " is no longer the dominant species");
+
+                        topSpeciesCount = checkedSpeciesCount;
+                        topSpeciesId = topList[0].Id;
+                        topSpeciesName = topList[0].Name;
+
+                        EventLog.Add(topSpeciesName + " is now the dominant species");
+                    }
+                }
             }
         }
     }

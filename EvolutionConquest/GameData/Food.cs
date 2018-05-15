@@ -13,6 +13,8 @@ public class Food : SpriteBase
     public Color FoodColor { get; set; } //Based on the Type
     public string DisplayText { get; set; }
     public Vector2 TextSize { get; set; }
+    public float Lifespan { get; set; } //How long the food lives
+    public int ElapsedTicks { get; set; } //How many ticks the food has been alive for
 
     public Food()
     {

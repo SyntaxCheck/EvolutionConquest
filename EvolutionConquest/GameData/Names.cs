@@ -5532,6 +5532,13 @@ public class Names
             _localListFound = false;
         }
 
+        if (filteredNameList.Count <= 0 && _localListFound)
+        {
+            NameList.AddRange(_wordList);
+            _localListFound = false;
+            filteredNameList = NameList.Where(t => t.StartsWith(currentName.Substring(0, 1))).ToList();
+        }
+
         if (filteredNameList.Count > 0)
         {
             int index = rand.Next(0, filteredNameList.Count());
@@ -5544,7 +5551,7 @@ public class Names
         else
         {
             DateTime time = DateTime.Now;
-            name = currentName.Substring(0,1) + time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString() + Math.Round(rand.NextDouble(), 8).ToString();
+            name = currentName.Substring(0,1) + time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString();
         }
 
         return name;
@@ -5591,7 +5598,7 @@ public class Names
         else
         {
             DateTime time = DateTime.Now;
-            name = time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString() + Math.Round(rand.NextDouble(), 8).ToString();
+            name = time.Day.ToString() + time.Hour.ToString() + time.Minute.ToString() + time.Second.ToString() + time.Millisecond.ToString();
         }
 
         return name;

@@ -104,7 +104,7 @@ public class SettingsHelper
         settingsIn.EnergyGivenFromFood = 100;
         settingsIn.EnergyConsumptionFromLayingEgg = 50;
         settingsIn.EnergyDepletionFromMovement = 10f;
-        settingsIn.EnergyDepletionPercentFromComplexity = 50f;
+        settingsIn.EnergyDepletionPercentFromComplexity = 90f;
         settingsIn.CarnivoreLevelBuffer = 5;
     }
     public static void SetDefaultCreature(ref CreatureSettings settingsIn)
@@ -117,8 +117,8 @@ public class SettingsHelper
         settingsIn.StartingFoodDigestionMax = 25;
         settingsIn.StartingSpeedMin = 5;
         settingsIn.StartingSpeedMax = 25;
-        settingsIn.StartingLifespanMin = 100;
-        settingsIn.StartingLifespanMax = 120;
+        settingsIn.StartingLifespanMin = 110;
+        settingsIn.StartingLifespanMax = 140;
         settingsIn.StartingHerbavoreLevelMin = 1;
         settingsIn.StartingHerbavoreLevelMax = 2;
         settingsIn.StartingCarnivoreLevelMin = 0;
@@ -131,7 +131,7 @@ public class SettingsHelper
         settingsIn.StartingColdToleranceMax = 10;
         settingsIn.StartingHotToleranceMin = 0;
         settingsIn.StartingHotToleranceMax = 10;
-        settingsIn.StartingEnergy = 425;
+        settingsIn.StartingEnergy = 350;
     }
     public static void SetDefaultMutation(ref MutationSettings settingsIn)
     {

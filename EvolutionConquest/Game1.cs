@@ -86,6 +86,8 @@ namespace EvolutionConquest
         private const float HUD_ICON_SCALE = 0.375f;
         private const int MAX_UNDIGESTED_FOOD = 5;
         private const int EVENT_LOG_DISPLAY_COUNT = 38;
+        private const int INITIAL_SPAWN_FOOD_AVG_LIFESPAN = 1000;
+        private const int INITIAL_SPAWN_FOOD_VARIANCE = 750;
         //GamePlay feature toggles
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
@@ -211,11 +213,23 @@ namespace EvolutionConquest
                 }
             }
 
+            //Attempt to give starting creatures a better chance of finding food in the beginning to avoid large extinctions to open the game
             //Load in random food
             int amountOfFood = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / _foodTexture.Width) * (_gameData.Settings.StartingFoodRatio / 100000f));
+            //Spawn in fast despawning food
             for (int i = 0; i < amountOfFood; i++)
             {
-                SpawnFood();
+                SpawnFood(_rand.Next(INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - INITIAL_SPAWN_FOOD_VARIANCE / 10, INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 + INITIAL_SPAWN_FOOD_VARIANCE / 10));
+            }
+            //Spawn in medium despawning food
+            for (int i = 0; i < amountOfFood; i++)
+            {
+                SpawnFood(_rand.Next(INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - INITIAL_SPAWN_FOOD_VARIANCE / 4, INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 + INITIAL_SPAWN_FOOD_VARIANCE / 4));
+            }
+            //Spawn in regular despawning food
+            for (int i = 0; i < amountOfFood / 2; i++)
+            {
+                SpawnFood(_rand.Next(INITIAL_SPAWN_FOOD_AVG_LIFESPAN - INITIAL_SPAWN_FOOD_VARIANCE, INITIAL_SPAWN_FOOD_AVG_LIFESPAN + INITIAL_SPAWN_FOOD_VARIANCE));
             }
 
             //Game start, load in starting population of creatures
@@ -519,6 +533,20 @@ namespace EvolutionConquest
                             }
                         }
                     }
+                }
+            }
+
+            //Remove food that has expired
+            for (int i = _gameData.Food.Count - 1; i >= 0; i--)
+            {
+                _gameData.Food[i].ElapsedTicks++;
+
+                if (_gameData.Food[i].Lifespan > 0 && _gameData.Food[i].ElapsedTicks > _gameData.Food[i].Lifespan)
+                {
+                    Food tmpFood = _gameData.Food[i];
+
+                    _gameData.RemoveFoodFromGrid(tmpFood, tmpFood.GridPositions);
+                    _gameData.Food.Remove(tmpFood);
                 }
             }
         }
@@ -871,7 +899,7 @@ namespace EvolutionConquest
         private void UpdateCreatureSight(GameTime gameTime, int creatureIndex)
         {
             //Vision is calculated from the center of the creature, if they do not have vision greater than their texture size there is no point calculating for vision
-            if (!_gameData.Creatures[creatureIndex].IsLeavingClimate && _gameData.Creatures[creatureIndex].Sight > 0 && _gameData.Creatures[creatureIndex].TicksSinceLastVisionCheck >= _gameData.Creatures[creatureIndex].TicksBetweenVisionChecks)
+            if (_gameData.Creatures[creatureIndex].UndigestedFood < MAX_UNDIGESTED_FOOD && !_gameData.Creatures[creatureIndex].IsLeavingClimate && _gameData.Creatures[creatureIndex].Sight > 0 && _gameData.Creatures[creatureIndex].TicksSinceLastVisionCheck >= _gameData.Creatures[creatureIndex].TicksBetweenVisionChecks)
             {
                 _gameData.Creatures[creatureIndex].TicksSinceLastVisionCheck = 0; //Reset the counter
 
@@ -2788,16 +2816,26 @@ namespace EvolutionConquest
         }
         private void SpawnFood()
         {
+            SpawnFood(-1f);
+        }
+        private void SpawnFood(float lifeSpan)
+        {
             Vector2 position = new Vector2(_rand.Next(_foodTexture.Width, _gameData.Settings.WorldSize - _foodTexture.Width), _rand.Next(_foodTexture.Height, _gameData.Settings.WorldSize - _foodTexture.Height));
-            SpawnFood(position, _maxFoodLevel);
+            SpawnFood(position, _maxFoodLevel, lifeSpan);
         }
         private void SpawnFood(Vector2 position, float maxHerbavoreLevel)
+        {
+            //Pass in -1 lifespan to disable food life making the food last forever
+            SpawnFood(position, maxHerbavoreLevel, -1f);
+        }
+        private void SpawnFood(Vector2 position, float maxHerbavoreLevel, float lifeSpan)
         {
             Food food = new Food();
             food.WorldSize = _gameData.Settings.WorldSize;
             food.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
             food.Texture = _foodTexture;
             food.Position = position;
+            food.Lifespan = lifeSpan * 10f;
 
             //When the creature dies it throws the food randomly around it, make sure that we do not have food out of the world spawning
             if (food.Bounds.Left < 0)

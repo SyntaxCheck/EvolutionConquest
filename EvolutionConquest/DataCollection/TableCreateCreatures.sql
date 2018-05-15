@@ -15,7 +15,7 @@ create table Creatures
 	CreatureName varchar(200) not null,
 	SpeciesID int not null,
 	SpeciesName varchar(200) not null,
-	SpeciesStrain varchar(200) not null,
+	SpeciesStrain varchar(1000) not null,
 	OriginalSpeciesID int not null,
 	OriginalSpeciesName varchar(200) not null,
 	Generation int not null,
