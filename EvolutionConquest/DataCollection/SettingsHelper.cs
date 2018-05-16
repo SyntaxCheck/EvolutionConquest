@@ -103,7 +103,7 @@ public class SettingsHelper
         settingsIn.MaxFoodLevel = 50;
         settingsIn.EnergyGivenFromFood = 100;
         settingsIn.EnergyConsumptionFromLayingEgg = 50;
-        settingsIn.EnergyDepletionFromMovement = 10f;
+        settingsIn.EnergyDepletionFromMovement = 20f;
         settingsIn.EnergyDepletionPercentFromComplexity = 90f;
         settingsIn.CarnivoreLevelBuffer = 5;
     }

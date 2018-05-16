@@ -4,6 +4,8 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Reflection;
+using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -24,6 +26,9 @@ namespace EvolutionConquest
         private double _elapsedSeconds;
         private double _totalElapsedSeconds;
         private TimeSpan _resetTimeSpan;
+        private Thread _statsThread;
+        private Thread _humanThread;
+        private StatsThread _statsThreadClass;
         //Game variables
         private GameData _gameData;
         private SpriteFont _panelHeaderFont;
@@ -62,14 +67,13 @@ namespace EvolutionConquest
         private EggShapeGenerator _eggGenerator;
         private Names _names;
         private Borders _borders;
-        private List<string> _creatureStats;
+        private Chart _chart;
+        private List<string> _controlsListText;
         private double _elapsedSecondsSinceTick;
         private double _elapsedTimeSinceFoodGeneration;
         private float _currentTicksPerSecond = 30;
         private float _tickSeconds;
         private float _elapsedTicksSinceSecondProcessing;
-        private Chart _chart;
-        private List<string> _controlsListText;
         private int _creatureIdCtr;
         private int _elapsedTicksForInitialFoodUpgrade;
         private int _elapsedTicksSinceFoodUpgrade;
@@ -94,6 +98,8 @@ namespace EvolutionConquest
         private const bool ENABLE_ENERGY_DEATH = true;
         private const bool ENABLE_SIGHT = true;
         private const bool ENABLE_CLIMATE = true;
+        private const bool ENABLE_DATABASE_STATS = false;
+        private const bool ENABLE_CSV_STATS = true;
         //Colors
         private Color MAP_COLOR = Color.SandyBrown;
 
@@ -104,7 +110,7 @@ namespace EvolutionConquest
             _graphics.PreferredBackBufferWidth = 1600;
 
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
-            _writeStats = false;
+            _writeStats = true;
 
             IsMouseVisible = true;
 
@@ -165,7 +171,6 @@ namespace EvolutionConquest
             _gameRandSeed = _rand.Next(0, int.MaxValue); //Use the initial random class to set a seed
             _rand = new Random(_gameRandSeed); //Re-instantiate the _rand variable with our seed
             _names = new Names();
-            _creatureStats = new List<string>();
             _creatureGenerator = new CreatureShapeGenerator();
             _foodGenerator = new FoodShapeGenerator();
             _eggGenerator = new EggShapeGenerator();
@@ -179,6 +184,9 @@ namespace EvolutionConquest
             _omnivoreSightTexture = _creatureGenerator.CreateCreatureOmnivoreTexture(_graphics.GraphicsDevice, true);
             _foodTexture = _foodGenerator.CreateFoodTexture(_graphics.GraphicsDevice);
             _eggTexture = _eggGenerator.CreateEggTexture(_graphics.GraphicsDevice, Color.Black, Color.White);
+            _gameData.GameSeed = _gameRandSeed;
+            _gameData.SessionID = _sessionID;
+            _gameData.TotalElapsedSeconds = _totalElapsedSeconds;
 
             //Generate the Map
             _borders = new Borders();
@@ -289,7 +297,7 @@ namespace EvolutionConquest
 
             Control.FromHandle(Window.Handle).Controls.Add(_chart);
 
-            if (_writeStats)
+            if (ENABLE_DATABASE_STATS && _writeStats)
             {
                 try
                 {
@@ -303,6 +311,11 @@ namespace EvolutionConquest
                     _writeStats = false;
                 }
             }
+            else if (ENABLE_CSV_STATS && _writeStats)
+            {
+                //Build the SessionID folder to hold the stats and this doubles as a check to make sure we can write files
+                System.IO.Directory.CreateDirectory(_sessionID.ToString());
+            }
 
             BuildSettingsPanel();
 
@@ -313,7 +326,19 @@ namespace EvolutionConquest
         }
         protected override void UnloadContent()
         {
-            // TODO: Unload any non ContentManager content here
+        }
+        protected override void OnExiting(object sender, EventArgs args)
+        {
+            if (_statsThread != null && _statsThread.IsAlive)
+            {
+                _statsThread.Abort();
+            }
+            if (_humanThread != null && _humanThread.IsAlive)
+            {
+                _humanThread.Abort();
+            }
+
+            base.OnExiting(sender, args);
         }
         protected override void Update(GameTime gameTime)
         {
@@ -375,6 +400,7 @@ namespace EvolutionConquest
 
             //FPS Counter
             _totalElapsedSeconds += gameTime.ElapsedGameTime.TotalSeconds;
+            _gameData.TotalElapsedSeconds = _totalElapsedSeconds; //Keep two variables in sync
             if (_elapsedSeconds >= 1)
             {
                 _fps = _frames;
@@ -443,6 +469,7 @@ namespace EvolutionConquest
                     _gameData.Creatures[i].IsAlive = false;
                     if (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0)
                     {
+                        _gameData.Creatures[i].Energy = 0; //Not possible to have negative energy
                         _gameData.Creatures[i].DeathCause = "Energy";
                     }
                     else
@@ -487,13 +514,13 @@ namespace EvolutionConquest
                     }
                     if (!found)
                     {
-                        _gameData.EventLog.Add(speciesType + " species '" + speciesName + "' has gone extinct");
+                        _gameData.EventLog.Add("$[255,000,000]" + speciesType + " species '" + speciesName + "' has gone extinct");
                     }
 
                     continue;
                 }
                 //Check if we can lay a new egg
-                if (_gameData.Creatures[i].DigestedFood > 0 && _gameData.Creatures[i].TicksSinceLastEgg >= _gameData.Creatures[i].EggInterval)
+                if (_gameData.Creatures[i].DigestedFood > 0 && _gameData.Creatures[i].TicksSinceLastEgg >= _gameData.Creatures[i].EggInterval && _gameData.Creatures[i].Energy >= _gameData.Creatures[i].GetEggCreateEnergyLoss(_gameData.Settings.EnergyConsumptionFromLayingEgg))
                 {
                     _gameData.Creatures[i].DigestedFood--; //Costs one digested food to lay an egg
                     Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData, ref _creatureIdCtr);
@@ -784,7 +811,7 @@ namespace EvolutionConquest
                 }
                 if (!found)
                 {
-                    _gameData.EventLog.Add(speciesType + " species '" + speciesName + "' has gone extinct");
+                    _gameData.EventLog.Add("$[255,000,000]" + speciesType + " species '" + speciesName + "' has gone extinct");
                 }
             }
         }
@@ -831,7 +858,8 @@ namespace EvolutionConquest
         }
         private void UpdateHandleEndOfSimulation(GameTime gameTime)
         {
-            if (_writeStats)
+            #pragma warning disable CS0162 // Unreachable code detected
+            if (ENABLE_DATABASE_STATS && _writeStats)
             {
                 SqlConnection connection = _connectionManager.GetSqlConnection(_gameData.Settings);
 
@@ -859,13 +887,33 @@ namespace EvolutionConquest
 
                 ResetGame(gameTime);
             }
+            else if (ENABLE_CSV_STATS && _writeStats)
+            {
+                //Build Directory if it does not exist
+                if(!System.IO.Directory.Exists(_sessionID.ToString()))
+                    System.IO.Directory.CreateDirectory(_sessionID.ToString());
+
+                //Write Settings
+                List<string> csvSettings = BuildStringListFromClass(_gameData.Settings, _gameData.CreatureSettings, _gameData.MutationSettings);
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "Settings.csv"), csvSettings.ToArray());
+                csvSettings = null; //Let GC cleanup the RAM before we build the next list
+
+                //Alive creatures
+                List<string> csvListAliveOnly = BuildStringList(_gameData.Creatures);
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(),"ActiveOnly.csv"), csvListAliveOnly.ToArray());
+                csvListAliveOnly = null; //Let GC cleanup the RAM before we build the next list
+
+                //Both Dead and Alive creatures
+                List<string> csvListBothDeadAndAlive = BuildStringList(_gameData.Creatures, _gameData.DeadCreatures);
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "InactiveAndActive.csv"), csvListBothDeadAndAlive.ToArray());
+                csvListBothDeadAndAlive = null; //Let GC cleanup the RAM before we build the next list
+            }
             else
             {
                 //Reset the timespan so that we continue to run. Disable the warning for now, we will probably move a bunch of settings to the config later
-                #pragma warning disable CS0162 // Unreachable code detected
                 _resetTimeSpan = gameTime.TotalGameTime;
-                #pragma warning restore CS0162 // Unreachable code detected
             }
+            #pragma warning restore CS0162 // Unreachable code detected
         }
 
         //Update Creature functions
@@ -1262,7 +1310,7 @@ namespace EvolutionConquest
             }
             else if(_gameData.ShowEventLogPanel && _gameData.EventLog.Count > 0)
             {
-                DrawPanelWithText(_panelHeaderFont, "Event Log", _diagFont, _gameData.GetEventsForDisplay(EVENT_LOG_DISPLAY_COUNT), Global.Anchor.TopLeft, (int)Math.Ceiling(_diagFont.MeasureString("Species 'Fernandos' has mutated into 'Fransiscos'").X), 0, 20);
+                DrawPanelWithText(_panelHeaderFont, "Event Log", _diagFont, _gameData.GetEventsForDisplay(EVENT_LOG_DISPLAY_COUNT), Global.Anchor.TopLeft, (int)Math.Ceiling(_diagFont.MeasureString("Species 'Ferniandos' has mutated into 'Frainsiscos'").X), 0, 20);
             }
         }
         private void DrawMapStatistics()
@@ -1613,7 +1661,18 @@ namespace EvolutionConquest
 
             for (int i = 0; i < text.Count; i++)
             {
-                _spriteBatch.DrawString(textFont, text[i], new Vector2(currentX, currentY), textColor);
+                Color tmpTextColor = textColor;
+                string tempText = text[i];
+
+                if (text[i].StartsWith("$["))
+                {
+                    string textColorCode = text[i].Substring(2, 11); //Example: [255,255,255] or [005,255,050] 
+                    string[] split = textColorCode.Split(new char[] { ',' });
+                    tmpTextColor = new Color(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
+
+                    tempText = tempText.Substring(text[i].IndexOf("]") + 1);
+                }
+                _spriteBatch.DrawString(textFont, tempText, new Vector2(currentX, currentY), tmpTextColor);
                 currentY += textHeight + textSpacing;
             }
         }
@@ -1628,6 +1687,21 @@ namespace EvolutionConquest
         }
         private void InitVariables()
         {
+            if (_statsThread != null && _statsThread.IsAlive)
+            {
+                _statsThread.Abort();
+            }
+            if (_humanThread != null && _humanThread.IsAlive)
+            {
+                _humanThread.Abort();
+            }
+
+            //Thread t = new Thread(new ParameterizedThreadStart(StartupA));
+            //t.Start(new MyThreadParams(path, port));
+
+            _statsThreadClass = new StatsThread(_gameData);
+            _statsThread = new Thread(new ThreadStart(_statsThreadClass.Start));
+            _statsThread.Start();
             _inputState = new InputState();
             _player = new Player();
             _connectionManager = new ConnectionManager();
@@ -2813,6 +2887,186 @@ namespace EvolutionConquest
             mutationTab.Controls = _uiControls;
 
             return mutationTab;
+        }
+        private List<string> BuildStringList(List<Creature> creatureList)
+        {
+            List<Creature> blankList = new List<Creature>();
+
+            return BuildStringList(creatureList, blankList);
+        }
+        private List<string> BuildStringList(List<Creature> creatureList1, List<Creature> creatureList2)
+        {
+            List<string> builtList = new List<string>();
+
+            if (creatureList1.Count > 0)
+            {
+                //Build Stats List array for each creature
+                List<CreatureStats> statsList = new List<CreatureStats>();
+                foreach (Creature c in creatureList1)
+                {
+                    statsList.Add(c.GetCreatureStatistics(_gameRandSeed, _sessionID, _totalElapsedSeconds));
+                }
+
+                //Build the column headers row if it does not exist
+                if (builtList.Count <= 0 && statsList.Count > 0)
+                {
+                    string headers = String.Empty;
+
+                    foreach (string s in statsList[0].FieldHeaders)
+                    {
+                        headers += s + ",";
+                    }
+
+                    if (!String.IsNullOrEmpty(headers))
+                    {
+                        headers = headers.Substring(0, headers.Length - 1);
+                        builtList.Add(headers);
+                    }
+                }
+
+                foreach (CreatureStats cs in statsList)
+                {
+                    string csvRow = String.Empty;
+
+                    foreach (string s in cs.StringStats)
+                    {
+                        csvRow += s + ",";
+                    }
+                    foreach (int i in cs.IntStats)
+                    {
+                        csvRow += i.ToString() + ",";
+                    }
+                    foreach (int f in cs.FloatStats)
+                    {
+                        csvRow += f.ToString() + ",";
+                    }
+
+                    if (!String.IsNullOrEmpty(csvRow))
+                    {
+                        csvRow = csvRow.Substring(0, csvRow.Length - 1);
+                        builtList.Add(csvRow);
+                    }
+                }
+            }
+            if (creatureList2.Count > 0)
+            {
+                //Build Stats List array for each creature
+                List<CreatureStats> statsList = new List<CreatureStats>();
+                foreach (Creature c in creatureList2)
+                {
+                    statsList.Add(c.GetCreatureStatistics(_gameRandSeed, _sessionID, _totalElapsedSeconds));
+                }
+
+                //Build the column headers row if it does not exist
+                if (builtList.Count <= 0 && statsList.Count > 0)
+                {
+                    string headers = String.Empty;
+
+                    foreach (string s in statsList[0].FieldHeaders)
+                    {
+                        headers += s + ",";
+                    }
+
+                    if (!String.IsNullOrEmpty(headers))
+                    {
+                        headers = headers.Substring(0, headers.Length - 1);
+                        builtList.Add(headers);
+                    }
+                }
+
+                foreach (CreatureStats cs in statsList)
+                {
+                    string csvRow = String.Empty;
+
+                    foreach (string s in cs.StringStats)
+                    {
+                        csvRow += s + ",";
+                    }
+                    foreach (int i in cs.IntStats)
+                    {
+                        csvRow += i.ToString() + ",";
+                    }
+                    foreach (int f in cs.FloatStats)
+                    {
+                        csvRow += f.ToString() + ",";
+                    }
+
+                    if (!String.IsNullOrEmpty(csvRow))
+                    {
+                        csvRow = csvRow.Substring(0, csvRow.Length - 1);
+                        builtList.Add(csvRow);
+                    }
+                }
+            }
+
+            return builtList;
+        }
+        private List<string> BuildStringListFromClass(object obj)
+        {
+            return BuildStringListFromClass(obj, null, null);
+        }
+        private List<string> BuildStringListFromClass(object obj1, object obj2, object obj3)
+        {
+            List<string> builtList = new List<string>();
+            string headers = String.Empty;
+            string csvRow = String.Empty;
+            string className = String.Empty;
+
+            if (obj1 != null)
+            {
+                className = obj1.GetType().Name;
+                PropertyInfo[] pi1 = obj1.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi1)
+                {
+                    headers += className + "_" + p.Name + ",";
+                }
+                foreach (PropertyInfo p in pi1)
+                {
+                    csvRow += p.GetValue(obj1, null).ToString() + ",";
+                }
+            }
+            if (obj2 != null)
+            {
+                className = obj2.GetType().Name;
+                PropertyInfo[] pi2 = obj2.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi2)
+                {
+                    headers += className + "_" + p.Name + ",";
+                }
+                foreach (PropertyInfo p in pi2)
+                {
+                    csvRow += p.GetValue(obj2, null).ToString() + ",";
+                }
+            }
+            if (obj3 != null)
+            {
+                className = obj3.GetType().Name;
+                PropertyInfo[] pi3 = obj3.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi3)
+                {
+                    headers += className + "_" + p.Name + ",";
+                }
+                foreach (PropertyInfo p in pi3)
+                {
+                    csvRow += p.GetValue(obj3, null).ToString() + ",";
+                }
+            }
+
+            if (!String.IsNullOrEmpty(headers))
+            {
+                headers = headers.Substring(0, headers.Length - 1);
+                builtList.Add(headers);
+            }
+            if (!String.IsNullOrEmpty(csvRow))
+            {
+                csvRow = csvRow.Substring(0, csvRow.Length - 1);
+                builtList.Add(csvRow);
+            }
+
+            return builtList;
         }
         private void SpawnFood()
         {

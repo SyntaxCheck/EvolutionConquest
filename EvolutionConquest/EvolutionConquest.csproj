@@ -51,6 +51,7 @@
     <Compile Include="Framework\Global.cs" />
     <Compile Include="Framework\InputState.cs" />
     <Compile Include="Framework\Player.cs" />
+    <Compile Include="Framework\StatsThread.cs" />
     <Compile Include="Framework\UIControls.cs" />
     <Compile Include="Game1.cs" />
     <Compile Include="GameData\Borders.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="GameData\Creature.cs" />
     <Compile Include="DataCollection\CreatureSettings.cs" />
     <Compile Include="GameData\CreatureShapeGenerator.cs" />
+    <Compile Include="GameData\CreatureStats.cs" />
     <Compile Include="GameData\Egg.cs" />
     <Compile Include="GameData\EggShapeGenerator.cs" />
     <Compile Include="GameData\Food.cs" />

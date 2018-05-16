@@ -12,6 +12,9 @@ public class GameData
     private bool initialThreshholdForTopSpeciesLogged;
     private int initialThreshhold = 5;
 
+    public int GameSeed { get; set; }
+    public int SessionID { get; set; }
+    public double TotalElapsedSeconds { get; set; }
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
     public MutationSettings MutationSettings { get; set; }
@@ -24,6 +27,7 @@ public class GameData
     public int FocusIndex { get; set; } //Camera focus index, this value is used when Paging between Creatures
     public List<SpeciesToCount> ChartData { get; set; }
     public List<SpeciesToCount> ChartDataTop { get; set; }
+    public int NumberOfTimesChartDataUpdated { get; set; }
     public List<string> EventLog { get; set; } //Log of events that occur so that it is easier to follow what is happening in game
     public GridData[,] MapGridData { get; set; }
     public int NextSpeciesId
@@ -62,7 +66,7 @@ public class GameData
         ChartData = new List<SpeciesToCount>();
         ChartDataTop = new List<SpeciesToCount>();
         EventLog = new List<string>();
-        EventLog.Add("Game Started!");
+        EventLog.Add("$[064,064,064]Game Started!");
         Creatures = new List<Creature>();
         DeadCreatures = new List<Creature>();
         Eggs = new List<Egg>();
@@ -86,6 +90,7 @@ public class GameData
         ShowEventLogPanel = true;
         topSpeciesId = -1;
         topSpeciesName = String.Empty;
+        NumberOfTimesChartDataUpdated = 0;
     }
 
     public void CalculateMapStatistics()
@@ -134,6 +139,8 @@ public class GameData
     }
     public void CalculateChartData(Random _rand)
     {
+        NumberOfTimesChartDataUpdated++;
+
         if (ChartData.Count == 0)
         {
             InitializeChartData(_rand);
@@ -250,14 +257,15 @@ public class GameData
                 {
                     if (topSpeciesId != topList[0].Id)
                     {
-                        if (!String.IsNullOrEmpty(topSpeciesName))
-                            EventLog.Add(topSpeciesName + " is no longer the dominant species");
+                        //Only log who the old dominant species was if the last message wasn't indicating who the new top species is
+                        if (!String.IsNullOrEmpty(topSpeciesName) && !EventLog[EventLog.Count - 1].Contains(" the dominant "))
+                            EventLog.Add("$[128,128,128]" + topSpeciesName + " is no longer the dominant species");
 
                         topSpeciesCount = checkedSpeciesCount;
                         topSpeciesId = topList[0].Id;
                         topSpeciesName = topList[0].Name;
 
-                        EventLog.Add(topSpeciesName + " is now the dominant species");
+                        EventLog.Add("$[038,127,000]" + topSpeciesName + " is now the dominant species");
                     }
                 }
             }

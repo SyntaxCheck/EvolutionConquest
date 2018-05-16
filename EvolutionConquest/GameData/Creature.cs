@@ -704,12 +704,127 @@ public class Creature : SpriteBase
 
         return sqlStatements;
     }
-    public void EggCreateEnergyLoss(float baseEnergyLost)
+    public CreatureStats GetCreatureStatistics(int seed, int sessionID, double gameTimeSeconds)
+    {
+        CreatureStats creatureStats = new CreatureStats();
+
+        //String fields
+        creatureStats.FieldHeaders.Add("GameRandomSeed");
+        creatureStats.StringStats.Add(seed.ToString());
+        creatureStats.FieldHeaders.Add("SessionID");
+        creatureStats.StringStats.Add(sessionID.ToString());
+        creatureStats.FieldHeaders.Add("GameTimeMinutes");
+        creatureStats.StringStats.Add(gameTimeSeconds.ToString());
+        creatureStats.FieldHeaders.Add("Species");
+        creatureStats.StringStats.Add(Species);
+        creatureStats.FieldHeaders.Add("Strain");
+        creatureStats.StringStats.Add(SpeciesStrain);
+        creatureStats.FieldHeaders.Add("OriginalSpecies");
+        creatureStats.StringStats.Add(OriginalSpecies);
+        creatureStats.FieldHeaders.Add("CreatureID");
+        creatureStats.StringStats.Add(CreatureId.ToString());
+        creatureStats.FieldHeaders.Add("CreatureType");
+        creatureStats.StringStats.Add(GetCreatureTypeText());
+        creatureStats.FieldHeaders.Add("DeathCause");
+        creatureStats.StringStats.Add(DeathCause);
+        creatureStats.FieldHeaders.Add("FoodType");
+        creatureStats.StringStats.Add(FoodType);
+        creatureStats.FieldHeaders.Add("IsAlive");
+        creatureStats.StringStats.Add(IsAlive.ToString());
+        creatureStats.FieldHeaders.Add("IsHerbavore");
+        creatureStats.StringStats.Add(IsHerbavore.ToString());
+        creatureStats.FieldHeaders.Add("IsCarnivore");
+        creatureStats.StringStats.Add(IsCarnivore.ToString());
+        creatureStats.FieldHeaders.Add("IsScavenger");
+        creatureStats.StringStats.Add(IsScavenger.ToString());
+        creatureStats.FieldHeaders.Add("IsOmnivore");
+        creatureStats.StringStats.Add(IsOmnivore.ToString());
+
+        //Int fields
+        creatureStats.FieldHeaders.Add("SpeciesID");
+        creatureStats.IntStats.Add(SpeciesId);
+        creatureStats.FieldHeaders.Add("OriginalSpeciesID");
+        creatureStats.IntStats.Add(OriginalSpeciesId);
+        creatureStats.FieldHeaders.Add("Generation");
+        creatureStats.IntStats.Add(Generation);
+        creatureStats.FieldHeaders.Add("CreatureTypeID");
+        creatureStats.IntStats.Add(GetCreatureTypeInt());
+        creatureStats.FieldHeaders.Add("EggsCreated");
+        creatureStats.IntStats.Add(EggsCreated);
+        creatureStats.FieldHeaders.Add("DigestedFood");
+        creatureStats.IntStats.Add(DigestedFood);
+        creatureStats.FieldHeaders.Add("UndigestedFood");
+        creatureStats.IntStats.Add(UndigestedFood);
+        creatureStats.FieldHeaders.Add("TotalFoodEaten");
+        creatureStats.IntStats.Add(TotalFoodEaten);
+        creatureStats.FieldHeaders.Add("FoodTypeID");
+        creatureStats.IntStats.Add(FoodTypeInt);
+
+        //Float Stats
+        creatureStats.FieldHeaders.Add("Sight");
+        creatureStats.FloatStats.Add(Sight);
+        creatureStats.FieldHeaders.Add("Speed");
+        creatureStats.FloatStats.Add(Speed);
+        creatureStats.FieldHeaders.Add("Lifespan");
+        creatureStats.FloatStats.Add(Lifespan);
+        creatureStats.FieldHeaders.Add("HowLongHasCreatureBeenAlive");
+        creatureStats.FloatStats.Add(ElapsedTicks);
+        creatureStats.FieldHeaders.Add("Energy");
+        creatureStats.FloatStats.Add(Energy);
+        creatureStats.FieldHeaders.Add("EggIncubationLength");
+        creatureStats.FloatStats.Add(EggIncubation);
+        creatureStats.FieldHeaders.Add("EggIncubationLengthActual");
+        creatureStats.FloatStats.Add(EggIncubationActual);
+        creatureStats.FieldHeaders.Add("TimeBetweenLayingEggs");
+        creatureStats.FloatStats.Add(EggInterval);
+        //creatureStats.FieldHeaders.Add("EggToxicity");
+        //creatureStats.FloatStats.Add(EggToxicity);
+        creatureStats.FieldHeaders.Add("FoodDigestionSpeed");
+        creatureStats.FloatStats.Add(FoodDigestion);
+        creatureStats.FieldHeaders.Add("FoodTypeBlueLevel");
+        creatureStats.FloatStats.Add(FoodTypeBlue);
+        creatureStats.FieldHeaders.Add("FoodTypeGreenLevel");
+        creatureStats.FloatStats.Add(FoodTypeGreen);
+        creatureStats.FieldHeaders.Add("FoodTypeRedLevel");
+        creatureStats.FloatStats.Add(FoodTypeRed);
+        creatureStats.FieldHeaders.Add("CreatureTypeLevel");
+        creatureStats.FloatStats.Add(GetCreatureLevel());
+        creatureStats.FieldHeaders.Add("HerbavoreLevel");
+        creatureStats.FloatStats.Add(Herbavore);
+        creatureStats.FieldHeaders.Add("CarnivoreLevel");
+        creatureStats.FloatStats.Add(Carnivore);
+        creatureStats.FieldHeaders.Add("ScavengerLevel");
+        creatureStats.FloatStats.Add(Scavenger);
+        creatureStats.FieldHeaders.Add("OmnivoreLevel");
+        creatureStats.FloatStats.Add(Omnivore);
+        creatureStats.FieldHeaders.Add("ColdClimateTolerance");
+        creatureStats.FloatStats.Add(ColdClimateTolerance);
+        creatureStats.FieldHeaders.Add("HotClimateTolerance");
+        creatureStats.FloatStats.Add(HotClimateTolerance);
+        //creatureStats.FieldHeaders.Add("Attraction");
+        //creatureStats.FloatStats.Add(Attraction);
+        //creatureStats.FieldHeaders.Add("Camo");
+        //creatureStats.FloatStats.Add(Camo);
+        //creatureStats.FieldHeaders.Add("Cloning");
+        //creatureStats.FloatStats.Add(Cloning);
+        //creatureStats.FieldHeaders.Add("EggCamo");
+        //creatureStats.FloatStats.Add(EggCamo);
+
+        return creatureStats;
+    }
+    public float GetEggCreateEnergyLoss(float baseEnergyLost)
     {
         if (Camo > 0)
         {
             baseEnergyLost += Camo * EGG_CAMO_COST_MULTIPLIER;
         }
+
+        return baseEnergyLost;
+    }
+    public void EggCreateEnergyLoss(float baseEnergyLost)
+    {
+        baseEnergyLost = GetEggCreateEnergyLoss(baseEnergyLost);
+
         Energy -= baseEnergyLost;
     }
     public float GetCreatureLevel()
