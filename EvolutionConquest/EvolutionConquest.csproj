@@ -48,13 +48,17 @@
     <Compile Include="DataCollection\SettingsHelper.cs" />
     <Compile Include="Framework\Camera.cs" />
     <Compile Include="Framework\CollisionDetection.cs" />
+    <Compile Include="Framework\CollisionThread.cs" />
     <Compile Include="Framework\Global.cs" />
     <Compile Include="Framework\InputState.cs" />
+    <Compile Include="Framework\PlantSpreadThread.cs" />
     <Compile Include="Framework\Player.cs" />
     <Compile Include="Framework\StatsThread.cs" />
+    <Compile Include="Framework\TextureContainer.cs" />
     <Compile Include="Framework\UIControls.cs" />
     <Compile Include="Game1.cs" />
     <Compile Include="GameData\Borders.cs" />
+    <Compile Include="GameData\CarcassShapeGenerator.cs" />
     <Compile Include="GameData\ClimateShapeGenerator.cs" />
     <Compile Include="GameData\Creature.cs" />
     <Compile Include="DataCollection\CreatureSettings.cs" />
@@ -68,6 +72,8 @@
     <Compile Include="GameData\GridData.cs" />
     <Compile Include="GameData\MapStatistics.cs" />
     <Compile Include="GameData\Names.cs" />
+    <Compile Include="GameData\Plant.cs" />
+    <Compile Include="GameData\PlantCreatureInteraction.cs" />
     <Compile Include="GameData\Roman.cs" />
     <Compile Include="GameData\SpeciesDistinct.cs" />
     <Compile Include="GameData\SpeciesToCount.cs" />

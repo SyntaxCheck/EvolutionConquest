@@ -16,6 +16,7 @@ public class GameSettings
     public int ClimateHeightPercent { get; set; }
     public float StartingFoodRatio { get; set; }
     public float FoodGenerationValue { get; set; }
+    public float StartingPlantRatio { get; set; }
     public float StartingCreatureRatio { get; set; }
     public float TicksUntilFoodUpgradeStarts { get; set; }
     public float TicksBetweenFoodUpgrades { get; set; }

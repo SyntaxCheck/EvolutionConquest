@@ -94,9 +94,10 @@ public class SettingsHelper
         settingsIn.WorldSize = 5000;
         settingsIn.ClimateHeightPercent = 20;
         settingsIn.StartingFoodRatio = 200f;
-        settingsIn.FoodGenerationValue = 25f;
+        settingsIn.FoodGenerationValue = 10f;
         settingsIn.TicksUntilFoodUpgradeStarts = 1800;
         settingsIn.TicksBetweenFoodUpgrades = 150;
+        settingsIn.StartingPlantRatio = 100f;
         settingsIn.StartingCreatureRatio = 10f;
         settingsIn.FoodUpgradeAmount = 1;
         settingsIn.FoodUpgradeChancePercent = 20;

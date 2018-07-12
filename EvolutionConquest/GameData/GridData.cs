@@ -11,6 +11,7 @@ public class GridData
     public List<Creature> Creatures { get; set; }
     public List<Egg> Eggs { get; set; }
     public List<Food> Food { get; set; }
+    public List<Plant> Plants { get; set; }
 
     public GridData()
     {

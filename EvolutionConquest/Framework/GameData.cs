@@ -1,10 +1,17 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 public class GameData
 {
+    //Should be changed back to constants once we have finished balance analysis
+    public int INITIAL_SPAWN_FOOD_AVG_LIFESPAN = 1000;
+    public int INITIAL_SPAWN_FOOD_VARIANCE = 750;
+    public int CARCASS_LIFESPAN = 300;
+    public int MAX_UNDIGESTED_FOOD = 5;
+
     private int nextSpeciesId;
     private int topSpeciesId; //ID for the species with the most creatures
     private int topSpeciesCount; //The count when this was last calculated
@@ -23,6 +30,7 @@ public class GameData
     public List<Creature> DeadCreatures { get; set; } //Used for writing stats at the end
     public List<Egg> Eggs { get; set; } //Eggs on the map
     public List<Food> Food { get; set; } //Food on the map
+    public List<Plant> Plants { get; set; } //Plants on the map
     public Creature Focus { get; set; } //Camera focus, the camera class will follow whatever Creature is selected here
     public int FocusIndex { get; set; } //Camera focus index, this value is used when Paging between Creatures
     public List<SpeciesToCount> ChartData { get; set; }
@@ -30,6 +38,8 @@ public class GameData
     public int NumberOfTimesChartDataUpdated { get; set; }
     public List<string> EventLog { get; set; } //Log of events that occur so that it is easier to follow what is happening in game
     public GridData[,] MapGridData { get; set; }
+    public int CurrentMaxFoodLevel { get; set; }
+    public float MaxCreatureUndigestedFood { get; set; }
     public int NextSpeciesId
     {
         get
@@ -57,6 +67,7 @@ public class GameData
     public bool ShowDebugData { get; set; }
     public bool ShowSettingsPanel { get; set; }
     public bool ShowEventLogPanel { get; set; }
+    public SpriteFont DebugFont { get; set; }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
 
@@ -71,6 +82,7 @@ public class GameData
         DeadCreatures = new List<Creature>();
         Eggs = new List<Egg>();
         Food = new List<Food>();
+        Plants = new List<Plant>();
         Focus = null; //Init the focus to null to not follow any creatures
         FocusIndex = -1;
         nextSpeciesId = 0;
@@ -293,6 +305,13 @@ public class GameData
             MapGridData[p.X, p.Y].Food.Add(food);
         }
     }
+    public void AddPlantToGrid(Plant plant)
+    {
+        foreach (Point p in plant.GridPositions)
+        {
+            MapGridData[p.X, p.Y].Plants.Add(plant);
+        }
+    }
     public void AddEggToGrid(Egg egg)
     {
         foreach (Point p in egg.GridPositions)
@@ -333,6 +352,13 @@ public class GameData
         foreach (Point p in toBeRemoved)
         {
             MapGridData[p.X, p.Y].Eggs.Remove(egg);
+        }
+    }
+    public void RemovePlantFromGrid(Plant plant, List<Point> toBeRemoved)
+    {
+        foreach (Point p in toBeRemoved)
+        {
+            MapGridData[p.X, p.Y].Plants.Remove(plant);
         }
     }
     public List<string> GetEventsForDisplay(int countToDisplay)

@@ -91,6 +91,8 @@ public class SpriteBase
                 IsInCold = false;
                 IsInHot = false;
             }
+
+            OnPositionSet();
         }
     }
     public bool IsInCold { get; set; }
@@ -273,5 +275,8 @@ public class SpriteBase
         CurrentGridPositionsForCompare = gridPosition;
 
         GridPositions = gridPositions;
+    }
+    public virtual void OnPositionSet()
+    {
     }
 }

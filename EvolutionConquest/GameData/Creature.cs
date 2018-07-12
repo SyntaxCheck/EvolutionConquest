@@ -10,7 +10,7 @@ public class Creature : SpriteBase
 {
     private Vector2 _direction;
     private float _rotation;
-    private int _undigestedFood;
+    private float _undigestedFood;
     private float _coldClimateTolerance;
     private float _hotClimateTolerance;
 
@@ -52,7 +52,7 @@ public class Creature : SpriteBase
         }
     }
     public Vector2 CalculatedIntercept { get; set; } //Simply used for debugging purposes
-    public int UndigestedFood
+    public float UndigestedFood
     {
         get { return _undigestedFood; }
         set
@@ -60,6 +60,7 @@ public class Creature : SpriteBase
             _undigestedFood = value;
         }
     } //Food count waiting to be digested
+    public float MaxUndigestedFood { get; set; } //Maximum amount of food that can be eaten
     public int DigestedFood { get; set; } //Food count that has been digested
     public float FoodDigestion { get; set; } //How quickly food can be digested and converted into an egg, Also the longer it takes the more Energy the food will give
     public float FoodTypeBlue { get; set; } //Food Type blue level, if this is higher than Red or Green then the creature can only eat this type
@@ -87,7 +88,11 @@ public class Creature : SpriteBase
     {
         get
         {
-            if (FoodTypeBlue > FoodTypeRed && FoodTypeBlue > FoodTypeGreen)
+            if (IsScavenger)
+            {
+                return -1;
+            }
+            else if (FoodTypeBlue > FoodTypeRed && FoodTypeBlue > FoodTypeGreen)
             {
                 return 0;
             }
@@ -108,12 +113,14 @@ public class Creature : SpriteBase
     public float EggInterval { get; set; } //How ofter an egg can be output
     public float EggIncubation { get; set; } //How long it takes for the egg to hatch once created
     public float EggIncubationActual { get; set; } //This is calculated based on their species level, if the creature is a herbavore add Herbavore * 10
-    //NOT IMPLEMENTED
     public float EggCamo { get; set; } //How well the egg is hidden from Scavengers
+    public List<int> InvisibleEggs { get; set; }
     //NOT IMPLEMENTED
     public float EggToxicity { get; set; } //How toxic the egg is to other creatures
     public int EggsCreated { get; set; }
     public float Speed { get; set; } //How quickly the creature moved through the world
+    public float PathDeviationAmount { get; set; } //How much to deviate from current path heading to simulate wandering
+    public float PathDeviationFrequency { get; set; } //How often to deviate from the current path heading
     public float Lifespan { get; set; } //How long the creature lives
     public float Energy { get; set; } //Energy is spent by moving and earned by eating
     public float ElapsedTicks { get; set; } //How many ticks the creature has been alive
@@ -196,6 +203,7 @@ public class Creature : SpriteBase
     {
         Ancestors = new List<string>();
         AncestorIds = new List<int>();
+        InvisibleEggs = new List<int>();
         DeathCause = String.Empty;
         IsLeavingClimate = false;
         CalculatedIntercept = Vector2.Zero;
@@ -250,6 +258,7 @@ public class Creature : SpriteBase
         FoodTypeRed = 0;
         FoodTypeGreen = 0;
         CreatureColor = Color.White;
+        MaxUndigestedFood = gameData.MaxCreatureUndigestedFood;
 
         int foodTypeRand = rand.Next(0,3);
         switch (foodTypeRand)
@@ -291,10 +300,10 @@ public class Creature : SpriteBase
         TicksSinceLastEgg++;
         TicksSinceLastVisionCheck++;
 
-        if (UndigestedFood > 0) //only allow digestion once a food has been eaten
+        if (UndigestedFood >= 1) //only allow digestion once a food has been eaten
             TicksSinceLastDigestedFood++;
 
-        if (UndigestedFood > 0 && TicksSinceLastDigestedFood >= FoodDigestion)
+        if (UndigestedFood >= 1 && TicksSinceLastDigestedFood >= FoodDigestion)
         {
             TicksSinceLastDigestedFood = 0;
             UndigestedFood--;
@@ -431,6 +440,7 @@ public class Creature : SpriteBase
         baby.TicksBetweenVisionChecks = TicksBetweenVisionChecks;
         baby.TicksInColdClimate = 0;
         baby.TicksInHotClimate = 0;
+        baby.MaxUndigestedFood = MaxUndigestedFood;
         baby.IsLeavingClimate = false;
 
         //Mutations
@@ -714,7 +724,7 @@ public class Creature : SpriteBase
         creatureStats.FieldHeaders.Add("SessionID");
         creatureStats.StringStats.Add(sessionID.ToString());
         creatureStats.FieldHeaders.Add("GameTimeMinutes");
-        creatureStats.StringStats.Add(gameTimeSeconds.ToString());
+        creatureStats.StringStats.Add(Math.Round(gameTimeSeconds / 60, 2).ToString());
         creatureStats.FieldHeaders.Add("Species");
         creatureStats.StringStats.Add(Species);
         creatureStats.FieldHeaders.Add("Strain");
@@ -753,14 +763,14 @@ public class Creature : SpriteBase
         creatureStats.IntStats.Add(EggsCreated);
         creatureStats.FieldHeaders.Add("DigestedFood");
         creatureStats.IntStats.Add(DigestedFood);
-        creatureStats.FieldHeaders.Add("UndigestedFood");
-        creatureStats.IntStats.Add(UndigestedFood);
         creatureStats.FieldHeaders.Add("TotalFoodEaten");
         creatureStats.IntStats.Add(TotalFoodEaten);
         creatureStats.FieldHeaders.Add("FoodTypeID");
         creatureStats.IntStats.Add(FoodTypeInt);
 
         //Float Stats
+        creatureStats.FieldHeaders.Add("UndigestedFood");
+        creatureStats.FloatStats.Add(UndigestedFood);
         creatureStats.FieldHeaders.Add("Sight");
         creatureStats.FloatStats.Add(Sight);
         creatureStats.FieldHeaders.Add("Speed");
@@ -852,6 +862,13 @@ public class Creature : SpriteBase
     {
         float calculatedEnergyLoss = 0f;
         float depletionFromMovement = gameData.Settings.EnergyDepletionFromMovement;
+        float energyDepletionPercentFromComplexity = gameData.Settings.EnergyDepletionPercentFromComplexity;
+
+        //Omnivores are more complex to digest both Plants/Animals so have them deplete energy faster
+        if (IsOmnivore)
+        {
+            energyDepletionPercentFromComplexity = energyDepletionPercentFromComplexity * 1.1f;
+        }
 
         //Having sight will increase the speed in which energy depletes based on the world setting and their Sight level. If the setting is 50% increase in energy consumption and the sight level is 10 then it will result in a 60% increase to energy lost
         if (Sight > 0)
