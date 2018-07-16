@@ -36,6 +36,7 @@ public class Plant : SpriteBase
     public float Rotation { get; set; } //How the plant is facing: 0, 90, 180, 270
     public List<Point> ExpandedGridPositions { get; set; }
     public List<Vector2> SaplingSpawnPoints { get; set; }
+    public bool MarkForDelete { get; set; }
 
     public Plant()
     {
@@ -45,6 +46,7 @@ public class Plant : SpriteBase
         TexturesList = new List<TextureContainer>();
         FoodHasBeenEatenSinceLastTick = false;
         SpreadPlant = false;
+        MarkForDelete = false;
         TicksSinceBirth = TicksSinceLastEaten = TicksSinceLastGrow = TicksSinceLastSpread = TotalTimesEatenFrom = 0;
         Interactions = new List<PlantCreatureInteraction>();
     }
@@ -73,14 +75,18 @@ public class Plant : SpriteBase
         Lifespan = rand.Next(4750, 6000);
         FoodAmount = 5;
         FoodAmountCap = rand.Next(100, 500);
-        FoodAmountGivenOnGrow = rand.Next(1, 10);
+        FoodAmountGivenOnGrow = rand.Next(1, 3);
+        //FoodAmountGivenOnGrow = rand.Next(1, 10);
         FoodAmountGivenOnEat = 1;
         FoodStrength = 10;
         EatCooldownTicks = rand.Next(100, 200);
-        NumberOfSaplings = rand.Next(0, 2);
-        SpreadCooldownTicks = rand.Next(1500, 2000);
-        GrowCooldownTicks = rand.Next(175, 250);
-        GrowDelayOnEatTicks = rand.Next(20, 40);
+        NumberOfSaplings = rand.Next(1, 2);
+        //SpreadCooldownTicks = rand.Next(2000, 2500);
+        SpreadCooldownTicks = rand.Next(1, 1);
+        GrowCooldownTicks = rand.Next(350, 450);
+        //GrowCooldownTicks = rand.Next(175, 250);
+        GrowDelayOnEatTicks = rand.Next(50, 60);
+        //GrowDelayOnEatTicks = rand.Next(20, 30);
         FoodType = 0; //NOT IMPLEMENTED
         Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
     }
@@ -94,11 +100,6 @@ public class Plant : SpriteBase
         for (int i = Interactions.Count - 1; i >= 0; i--)
         {
             Interactions[i].ElapsedTicks++;
-
-            if (Interactions[i].ElapsedTicks >= EatCooldownTicks)
-            {
-                Interactions.RemoveAt(i);
-            }
         }
 
         if (FoodHasBeenEatenSinceLastTick)
@@ -120,55 +121,6 @@ public class Plant : SpriteBase
         {
             TicksSinceLastSpread = 0;
             SpreadPlant = true;
-        }
-
-        if (FoodAmount >= 80)
-        {
-            if (CurrentTexture != "T5")
-            {
-                CurrentTexture = "T5";
-                Texture = TexturesList.First(t => t.Name == "T5").Texture;
-            }
-        }
-        else if (FoodAmount >= 50)
-        {
-            if (CurrentTexture != "T4")
-            {
-                CurrentTexture = "T4";
-                Texture = TexturesList.First(t => t.Name == "T4").Texture;
-            }
-        }
-        else if (FoodAmount >= 25)
-        {
-            if (CurrentTexture != "T3")
-            {
-                CurrentTexture = "T3";
-                Texture = TexturesList.First(t => t.Name == "T3").Texture;
-            }
-        }
-        else if (FoodAmount >= 15)
-        {
-            if (CurrentTexture != "T2")
-            {
-                CurrentTexture = "T2";
-                Texture = TexturesList.First(t => t.Name == "T2").Texture;
-            }
-        }
-        else if (FoodAmount >= 5)
-        {
-            if (CurrentTexture != "T1")
-            {
-                CurrentTexture = "T1";
-                Texture = TexturesList.First(t => t.Name == "T1").Texture;
-            }
-        }
-        else
-        {
-            if (CurrentTexture != "T0")
-            {
-                CurrentTexture = "T0";
-                Texture = TexturesList.First(t => t.Name == "T0").Texture;
-            }
         }
 
         DisplayText = FoodAmount.ToString() + "/" + FoodAmountCap;
@@ -194,7 +146,7 @@ public class Plant : SpriteBase
         babyPlant.GrowDelayOnEatTicks = GrowDelayOnEatTicks + (int)Math.Round(Mutate(rand, GrowDelayOnEatTicks, 2f), 0);
         babyPlant.FoodType = FoodType;
         babyPlant.Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
-        babyPlant.NumberOfSaplings = rand.Next(0, 2);
+        babyPlant.NumberOfSaplings = rand.Next(1, 1);
 
         return babyPlant;
     }
@@ -258,6 +210,57 @@ public class Plant : SpriteBase
             SaplingSpawnPoints.Add(bottomRight);
         if (IsInBounds(bottomLeft))
             SaplingSpawnPoints.Add(bottomLeft);
+    }
+    public void CheckTexture()
+    {
+        if (FoodAmount >= 80)
+        {
+            if (CurrentTexture != "T5")
+            {
+                CurrentTexture = "T5";
+                Texture = TexturesList.First(t => t.Name == "T5").Texture;
+            }
+        }
+        else if (FoodAmount >= 50)
+        {
+            if (CurrentTexture != "T4")
+            {
+                CurrentTexture = "T4";
+                Texture = TexturesList.First(t => t.Name == "T4").Texture;
+            }
+        }
+        else if (FoodAmount >= 25)
+        {
+            if (CurrentTexture != "T3")
+            {
+                CurrentTexture = "T3";
+                Texture = TexturesList.First(t => t.Name == "T3").Texture;
+            }
+        }
+        else if (FoodAmount >= 15)
+        {
+            if (CurrentTexture != "T2")
+            {
+                CurrentTexture = "T2";
+                Texture = TexturesList.First(t => t.Name == "T2").Texture;
+            }
+        }
+        else if (FoodAmount >= 5)
+        {
+            if (CurrentTexture != "T1")
+            {
+                CurrentTexture = "T1";
+                Texture = TexturesList.First(t => t.Name == "T1").Texture;
+            }
+        }
+        else
+        {
+            if (CurrentTexture != "T0")
+            {
+                CurrentTexture = "T0";
+                Texture = TexturesList.First(t => t.Name == "T0").Texture;
+            }
+        }
     }
 
     //Helper functions

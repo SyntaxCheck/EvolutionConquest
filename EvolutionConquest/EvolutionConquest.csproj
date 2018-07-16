@@ -42,6 +42,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DataCollection\ConnectionManager.cs" />
+    <Compile Include="DataCollection\DebugTimer.cs" />
     <Compile Include="DataCollection\GameSettings.cs" />
     <Compile Include="DataCollection\JsonHelper.cs" />
     <Compile Include="DataCollection\MutationSettings.cs" />

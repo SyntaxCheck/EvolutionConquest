@@ -68,6 +68,9 @@ public class GameData
     public bool ShowSettingsPanel { get; set; }
     public bool ShowEventLogPanel { get; set; }
     public SpriteFont DebugFont { get; set; }
+    public string LockPlants { get; set; }
+    public string LockFood { get; set; }
+    public bool TickElapsedPlants { get; set; }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
 
@@ -103,6 +106,9 @@ public class GameData
         topSpeciesId = -1;
         topSpeciesName = String.Empty;
         NumberOfTimesChartDataUpdated = 0;
+        LockFood = String.Empty;
+        LockPlants = String.Empty;
+        TickElapsedPlants = false;
     }
 
     public void CalculateMapStatistics()

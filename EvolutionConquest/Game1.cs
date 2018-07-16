@@ -26,6 +26,7 @@ namespace EvolutionConquest
         private int _fps;
         private double _elapsedSeconds;
         private double _totalElapsedSeconds;
+        private DebugTimer _debugTimer;
         private TimeSpan _resetTimeSpan;
         private Thread _statsThread;
         private Thread _plantSpreadThread;
@@ -90,7 +91,7 @@ namespace EvolutionConquest
         private float _foodGenerationIntervalSeconds;
         //Constants
         private const int SESSION_NUMBER = 1;
-        private const int MINUTES_TILL_GAMEOVER = 120;
+        private const int MINUTES_TILL_GAMEOVER = 30;
         private const float SPRITE_FONT_SCALE = 0.5f;
         private const float TICKS_PER_SECOND = 30;
         private const int BORDER_WIDTH = 10;
@@ -416,7 +417,14 @@ namespace EvolutionConquest
             {
                 bool tick = false;
 
+                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER / 2)
+                {
+                    _debugTimer = new DebugTimer();
+                }
+
+                DateTime debugDttm = DateTime.Now;
                 UpdateHandleInputs(gameTime);
+                _debugTimer.TimeUpdateHandleInputs += (DateTime.Now - debugDttm).TotalMilliseconds;
 
                 if (_gameData.ResetGame)
                 {
@@ -444,11 +452,15 @@ namespace EvolutionConquest
                     //During a tick do all creature processing
                     if (tick)
                     {
+                        debugDttm = DateTime.Now;
                         UpdateTick(gameTime);
+                        _debugTimer.TimeUpdateTick += (DateTime.Now - debugDttm).TotalMilliseconds;
                     }
                     else //Off tick processing
                     {
+                        debugDttm = DateTime.Now;
                         UpdateOffTick(gameTime);
+                        _debugTimer.TimeUpdateOffTick += (DateTime.Now - debugDttm).TotalMilliseconds;
                     }
                 }
                 else
@@ -467,7 +479,7 @@ namespace EvolutionConquest
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText(System.IO.Path.Combine(_sessionID.ToString(), "ErrorLogUpdate.txt"), "UPDATE Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_sessionID.ToString(), "ErrorLogUpdate.txt"), DateTime.Now.ToString() + " - UPDATE Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
             }
         }
         protected override void Draw(GameTime gameTime)
@@ -493,34 +505,47 @@ namespace EvolutionConquest
                     { }
 
                 // === DRAW WITHIN THE WORLD ===
+                DateTime debugDttm = DateTime.Now;
                 DrawWorldObjects();
+                _debugTimer.TimeDrawWorldObjects += (DateTime.Now - debugDttm).TotalMilliseconds;
                 //=== DRAW HUD INFORMATION, DOES NOT DRAW TO WORLD SCALE ===
+                debugDttm = DateTime.Now;
                 DrawHUD();
+                _debugTimer.TimeDrawHUD += (DateTime.Now - debugDttm).TotalMilliseconds;
 
                 base.Draw(gameTime);
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText(System.IO.Path.Combine(_sessionID.ToString(), "ErrorLogDraw.txt"), "DRAW Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_sessionID.ToString(), "ErrorLogDraw.txt"), DateTime.Now.ToString() + " - DRAW Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
             }
         }
 
         //Update functions
         private void UpdateTick(GameTime gameTime)
         {
+            _gameData.TickElapsedPlants = true;
             _elapsedTicksSinceSecondProcessing++;
 
             //Check eggs before creatures so that the baby can follow cretaure update logic when born such as eating food
+            DateTime debugDttm = DateTime.Now;
             UpdateTickEggHatching(gameTime);
+            _debugTimer.TimeUpdateTickEggHatching += (DateTime.Now - debugDttm).TotalMilliseconds;
 
             //Creature logic
+            debugDttm = DateTime.Now;
             UpdateTickCreature(gameTime);
+            _debugTimer.TimeUpdateTickCreature += (DateTime.Now - debugDttm).TotalMilliseconds;
 
             //Plant logic
-            UpdateTickPlant(gameTime);
+            //debugDttm = DateTime.Now;
+            //UpdateTickPlant(gameTime);
+            //_debugTimer.TimeUpdateTickPlant += (DateTime.Now - debugDttm).TotalMilliseconds;
 
             //Food logic
+            debugDttm = DateTime.Now;
             UpdateTickFood(gameTime);
+            _debugTimer.TimeUpdateTickFood += (DateTime.Now - debugDttm).TotalMilliseconds;
         }
         private void UpdateTickEggHatching(GameTime gameTime)
         {
@@ -656,44 +681,58 @@ namespace EvolutionConquest
             }
 
             //Remove food that has expired
-            for (int i = _gameData.Food.Count - 1; i >= 0; i--)
+            lock (_gameData.LockFood)
             {
-                _gameData.Food[i].ElapsedTicks++;
-
-                if (_gameData.Food[i].Lifespan > 0 && _gameData.Food[i].ElapsedTicks > _gameData.Food[i].Lifespan)
+                for (int i = _gameData.Food.Count - 1; i >= 0; i--)
                 {
-                    Food tmpFood = _gameData.Food[i];
+                    _gameData.Food[i].ElapsedTicks++;
 
-                    _gameData.RemoveFoodFromGrid(tmpFood, tmpFood.GridPositions);
-                    _gameData.Food.Remove(tmpFood);
+                    if (_gameData.Food[i].Lifespan > 0 && _gameData.Food[i].ElapsedTicks > _gameData.Food[i].Lifespan)
+                    {
+                        _gameData.Food[i].MarkedForDelete = true;
+
+                        //Food tmpFood = _gameData.Food[i];
+
+                        //_gameData.RemoveFoodFromGrid(tmpFood, tmpFood.GridPositions);
+                        //_gameData.Food.Remove(tmpFood);
+                    }
                 }
             }
         }
         private void UpdateTickPlant(GameTime gameTime)
         {
-            for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
+            lock (_gameData.LockPlants)
             {
-                _gameData.Plants[i].AdvanceTick(_rand);
-
-                //Check if plant has died
-                if (_gameData.Plants[i].TicksSinceBirth >= _gameData.Plants[i].Lifespan)
+                for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
                 {
-                    _gameData.RemovePlantFromGrid(_gameData.Plants[i], _gameData.Plants[i].GridPositions);
-                    _gameData.Plants.RemoveAt(i);
+                    _gameData.Plants[i].AdvanceTick(_rand);
+
+                    //Check if plant has died
+                    if (_gameData.Plants[i].TicksSinceBirth >= _gameData.Plants[i].Lifespan)
+                    {
+                        _gameData.Plants[i].MarkForDelete = true;
+                    }
                 }
             }
         }
         private void UpdateOffTick(GameTime gameTime)
         {
             //Spawn new food
+            DateTime debugDttm = DateTime.Now;
             UpdateOffTickSpawnFood(gameTime);
+            _debugTimer.TimeUpdateOffTickSpawnFood += (DateTime.Now - debugDttm).TotalMilliseconds;
+
             //Collisions And Movement
+            debugDttm = DateTime.Now;
             UpdateOffTickHandleCollisionsAndMovement(gameTime);
+            _debugTimer.TimeUpdateOffTickHandleCollisionsAndMovement += (DateTime.Now - debugDttm).TotalMilliseconds;
 
             //Every second interval processing only when it is not a TICK. Graph only needs to be updated once every X seconds
             if (_elapsedTicksSinceSecondProcessing >= TICKS_PER_SECOND * 5)
             {
+                debugDttm = DateTime.Now;
                 UpdateOffTickInterval(gameTime);
+                _debugTimer.TimeUpdateOffTickInterval += (DateTime.Now - debugDttm).TotalMilliseconds;
             }
 
             //Display chart logic here as well so that we do not need to wait 5 seconds
@@ -708,6 +747,7 @@ namespace EvolutionConquest
 
             UpdateOffTickIntervalGraphs(gameTime);
             UpdateOffTickIntervalMapStats(gameTime);
+            UpdateOffTickIntervalObjectCleanup(gameTime);
         }
         private void UpdateOffTickIntervalGraphs(GameTime gameTime)
         {
@@ -764,6 +804,42 @@ namespace EvolutionConquest
         {
             _gameData.CalculateMapStatistics();
         }
+        private void UpdateOffTickIntervalObjectCleanup(GameTime gameTime)
+        {
+            lock (_gameData.LockFood)
+            {
+                for (int i = _gameData.Food.Count - 1; i >= 0; i--)
+                {
+                    if (_gameData.Food[i].MarkedForDelete)
+                    {
+                        _gameData.RemoveFoodFromGrid(_gameData.Food[i], _gameData.Food[i].GridPositions);
+                        _gameData.Food.Remove(_gameData.Food[i]);
+                    }
+                }
+            }
+            lock (_gameData.LockPlants)
+            {
+                for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
+                {
+                    //Check if plant has died
+                    if (_gameData.Plants[i].MarkForDelete)
+                    {
+                        _gameData.RemovePlantFromGrid(_gameData.Plants[i], _gameData.Plants[i].GridPositions);
+                        _gameData.Plants.RemoveAt(i);
+                    }
+                    else
+                    {
+                        for (int k = _gameData.Plants[i].Interactions.Count - 1; k >= 0; k--)
+                        {
+                            if (_gameData.Plants[i].Interactions[k].ElapsedTicks >= _gameData.Plants[i].EatCooldownTicks)
+                            {
+                                _gameData.Plants[i].Interactions.RemoveAt(k);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         private void UpdateOffTickHandleCollisionsAndMovement(GameTime gameTime)
         {
             List<Creature> deadCreaturesToRemove = new List<Creature>();
@@ -795,28 +871,28 @@ namespace EvolutionConquest
                         }
                     }
 
-                    //Food collision
-                    if ((_gameData.Creatures[i].IsHerbavore || _gameData.Creatures[i].IsScavenger) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
-                    {
-                        foreach (Point p in _gameData.Creatures[i].GridPositions)
-                        {
-                            for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
-                            {
-                                if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && (_gameData.Creatures[i].IsScavenger || _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength))
-                                {
-                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
-                                    {
-                                        Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
-                                        _gameData.Creatures[i].UndigestedFood++;
-                                        _gameData.Creatures[i].TotalFoodEaten++;
-                                        _gameData.Creatures[i].Energy += _gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
-                                        _gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
-                                        _gameData.Food.Remove(tmpFood);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    ////Food collision
+                    //if ((_gameData.Creatures[i].IsHerbavore || _gameData.Creatures[i].IsScavenger) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
+                    //{
+                    //    foreach (Point p in _gameData.Creatures[i].GridPositions)
+                    //    {
+                    //        for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
+                    //        {
+                    //            if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && (_gameData.Creatures[i].IsScavenger || _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength))
+                    //            {
+                    //                if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                    //                {
+                    //                    Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
+                    //                    _gameData.Creatures[i].UndigestedFood++;
+                    //                    _gameData.Creatures[i].TotalFoodEaten++;
+                    //                    _gameData.Creatures[i].Energy += _gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                    //                    _gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
+                    //                    _gameData.Food.Remove(tmpFood);
+                    //                }
+                    //            }
+                    //        }
+                    //    }
+                    //}
                     ////Plant Collision
                     //if ((_gameData.Creatures[i].IsHerbavore && !_gameData.Creatures[i].IsOmnivore) && _gameData.Creatures[i].UndigestedFood < MAX_UNDIGESTED_FOOD)
                     //{
@@ -1058,6 +1134,11 @@ namespace EvolutionConquest
                 List<string> csvFitnessFile = BuildFitnessFile();
                 System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "FitnessFile.csv"), csvFitnessFile.ToArray());
                 csvFitnessFile = null; //Let GC cleanup the RAM before we build the next list
+
+                //Write Debug file
+                List<string> csvDebugTimerFile = BuildDebugTimerList();
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "DebugTimerFile.csv"), csvDebugTimerFile.ToArray());
+                csvDebugTimerFile = null; //Let GC cleanup the RAM before we build the next list
             }
             else
             {
@@ -1110,14 +1191,37 @@ namespace EvolutionConquest
         {
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
 
-            DrawClimates();
-            DrawFood();
-            DrawEggs();
-            DrawCreatures();
-            DrawBorders();
-            DrawPlants();
-            DrawHighlightCreatures();
-            DrawDebugData();
+            try
+            {
+                DateTime debugDttm = DateTime.Now;
+                DrawClimates();
+                _debugTimer.TimeDrawClimates += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawFood();
+                _debugTimer.TimeDrawFood += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawEggs();
+                _debugTimer.TimeDrawEggs += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawCreatures();
+                _debugTimer.TimeDrawCreatures += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawBorders();
+                _debugTimer.TimeDrawBorders += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawPlants();
+                _debugTimer.TimeDrawPlants += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawHighlightCreatures();
+                _debugTimer.TimeDrawHighlightCreatures += (DateTime.Now - debugDttm).TotalMilliseconds;
+                debugDttm = DateTime.Now;
+                DrawDebugData();
+                _debugTimer.TimeDrawDebugData += (DateTime.Now - debugDttm).TotalMilliseconds;
+            }
+            catch (Exception ex)
+            {
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_sessionID.ToString(), "ErrorLogDrawWorld.txt"), DateTime.Now.ToString() + " - DRAW Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+            }
 
             _spriteBatch.End();
         }
@@ -1148,10 +1252,13 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Food.Count; i++)
             {
-                _spriteBatch.Draw(_gameData.Food[i].Texture, _gameData.Food[i].Position, null, _gameData.Food[i].FoodColor, 0f, _gameData.Food[i].Origin, 1f, SpriteEffects.None, 1f);
-                if (_gameData.ShowFoodStrength)
+                if (!_gameData.Food[i].MarkedForDelete)
                 {
-                    _spriteBatch.DrawString(_foodFont, _gameData.Food[i].DisplayText, new Vector2(_gameData.Food[i].Position.X, _gameData.Food[i].Position.Y + (_gameData.Food[i].Texture.Height / 2) + (_gameData.Food[i].TextSize.Y / 2)), Color.Black, 0f, new Vector2(_gameData.Food[i].TextSize.X / 2, _gameData.Food[i].TextSize.Y / 2), 1f, SpriteEffects.None, 1f);
+                    _spriteBatch.Draw(_gameData.Food[i].Texture, _gameData.Food[i].Position, null, _gameData.Food[i].FoodColor, 0f, _gameData.Food[i].Origin, 1f, SpriteEffects.None, 1f);
+                    if (_gameData.ShowFoodStrength)
+                    {
+                        _spriteBatch.DrawString(_foodFont, _gameData.Food[i].DisplayText, new Vector2(_gameData.Food[i].Position.X, _gameData.Food[i].Position.Y + (_gameData.Food[i].Texture.Height / 2) + (_gameData.Food[i].TextSize.Y / 2)), Color.Black, 0f, new Vector2(_gameData.Food[i].TextSize.X / 2, _gameData.Food[i].TextSize.Y / 2), 1f, SpriteEffects.None, 1f);
+                    }
                 }
             }
         }
@@ -1159,10 +1266,13 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Plants.Count; i++)
             {
-                _spriteBatch.Draw(_gameData.Plants[i].Texture, _gameData.Plants[i].Position, null, Color.White, _gameData.Plants[i].Rotation, _gameData.Plants[i].Origin, 1f, SpriteEffects.None, 1f);
-                if (_gameData.ShowDebugData)
+                if (!_gameData.Plants[i].MarkForDelete)
                 {
-                    _spriteBatch.DrawString(_foodFont, _gameData.Plants[i].DisplayText, new Vector2(_gameData.Plants[i].Position.X, _gameData.Plants[i].Position.Y + (_gameData.Plants[i].Texture.Height / 2) + (_gameData.Plants[i].TextSize.Y / 2)), Color.Black, 0f, new Vector2(_gameData.Plants[i].TextSize.X / 2, _gameData.Plants[i].TextSize.Y / 2), 1f, SpriteEffects.None, 1f);
+                    _spriteBatch.Draw(_gameData.Plants[i].Texture, _gameData.Plants[i].Position, null, Color.White, _gameData.Plants[i].Rotation, _gameData.Plants[i].Origin, 1f, SpriteEffects.None, 1f);
+                    if (_gameData.ShowDebugData)
+                    {
+                        _spriteBatch.DrawString(_foodFont, _gameData.Plants[i].DisplayText, new Vector2(_gameData.Plants[i].Position.X, _gameData.Plants[i].Position.Y + (_gameData.Plants[i].Texture.Height / 2) + (_gameData.Plants[i].TextSize.Y / 2)), Color.Black, 0f, new Vector2(_gameData.Plants[i].TextSize.X / 2, _gameData.Plants[i].TextSize.Y / 2), 1f, SpriteEffects.None, 1f);
+                    }
                 }
             }
         }
@@ -1726,34 +1836,37 @@ namespace EvolutionConquest
 
             if (ENABLE_GAME_RESETS)
             {
+                float lowEndVal = 0.1f;
+                float highEndVal = 2f;
+
                 //Randomize the settings file
-                _gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * 0.9), (int)(_gameData.Settings.FoodGenerationValue * 2));
-                _gameData.Settings.TicksUntilFoodUpgradeStarts = _rand.Next((int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * 0.9), (int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * 2));
-                _gameData.Settings.TicksBetweenFoodUpgrades = _rand.Next((int)(_gameData.Settings.TicksBetweenFoodUpgrades * 0.9), (int)(_gameData.Settings.TicksBetweenFoodUpgrades * 2));
-                _gameData.Settings.StartingPlantRatio = _rand.Next((int)(_gameData.Settings.StartingPlantRatio * 0.9), (int)(_gameData.Settings.StartingPlantRatio * 2));
-                _gameData.Settings.EnergyGivenFromFood = _rand.Next((int)(_gameData.Settings.EnergyGivenFromFood * 0.9), (int)(_gameData.Settings.EnergyGivenFromFood * 2));
-                _gameData.Settings.EnergyConsumptionFromLayingEgg = _rand.Next((int)(_gameData.Settings.EnergyConsumptionFromLayingEgg * 0.9), (int)(_gameData.Settings.EnergyConsumptionFromLayingEgg * 2));
-                _gameData.Settings.EnergyDepletionFromMovement = _rand.Next((int)(_gameData.Settings.EnergyDepletionFromMovement * 0.9), (int)(_gameData.Settings.EnergyDepletionFromMovement * 2));
-                _gameData.Settings.EnergyDepletionPercentFromComplexity = _rand.Next((int)(_gameData.Settings.EnergyDepletionPercentFromComplexity * 0.9), (int)(_gameData.Settings.EnergyDepletionPercentFromComplexity * 2));
+                _gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
+                _gameData.Settings.TicksUntilFoodUpgradeStarts = _rand.Next((int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * lowEndVal), (int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * highEndVal));
+                _gameData.Settings.TicksBetweenFoodUpgrades = _rand.Next((int)(_gameData.Settings.TicksBetweenFoodUpgrades * lowEndVal), (int)(_gameData.Settings.TicksBetweenFoodUpgrades * highEndVal));
+                _gameData.Settings.StartingPlantRatio = _rand.Next((int)(_gameData.Settings.StartingPlantRatio * lowEndVal), (int)(_gameData.Settings.StartingPlantRatio * highEndVal));
+                _gameData.Settings.EnergyGivenFromFood = _rand.Next((int)(_gameData.Settings.EnergyGivenFromFood * lowEndVal), (int)(_gameData.Settings.EnergyGivenFromFood * highEndVal));
+                _gameData.Settings.EnergyConsumptionFromLayingEgg = _rand.Next((int)(_gameData.Settings.EnergyConsumptionFromLayingEgg * lowEndVal), (int)(_gameData.Settings.EnergyConsumptionFromLayingEgg * highEndVal));
+                _gameData.Settings.EnergyDepletionFromMovement = _rand.Next((int)(_gameData.Settings.EnergyDepletionFromMovement * lowEndVal), (int)(_gameData.Settings.EnergyDepletionFromMovement * highEndVal));
+                _gameData.Settings.EnergyDepletionPercentFromComplexity = _rand.Next((int)(_gameData.Settings.EnergyDepletionPercentFromComplexity * lowEndVal), (int)(_gameData.Settings.EnergyDepletionPercentFromComplexity * highEndVal));
 
-                _gameData.CreatureSettings.StartingEggIncubationMin = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIncubationMin * 0.9), (int)(_gameData.CreatureSettings.StartingEggIncubationMin * 2));
-                _gameData.CreatureSettings.StartingEggIncubationMax = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIncubationMax * 0.9), (int)(_gameData.CreatureSettings.StartingEggIncubationMax * 2));
-                _gameData.CreatureSettings.StartingEggIntervalMin = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIntervalMin * 0.9), (int)(_gameData.CreatureSettings.StartingEggIntervalMin * 2));
-                _gameData.CreatureSettings.StartingEggIntervalMax = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIntervalMax * 0.9), (int)(_gameData.CreatureSettings.StartingEggIntervalMax * 2));
-                _gameData.CreatureSettings.StartingFoodDigestionMin = _rand.Next((int)(_gameData.CreatureSettings.StartingFoodDigestionMin * 0.9), (int)(_gameData.CreatureSettings.StartingFoodDigestionMin * 2));
-                _gameData.CreatureSettings.StartingFoodDigestionMax = _rand.Next((int)(_gameData.CreatureSettings.StartingFoodDigestionMax * 0.9), (int)(_gameData.CreatureSettings.StartingFoodDigestionMax * 2));
-                _gameData.CreatureSettings.StartingSpeedMin = _rand.Next((int)(_gameData.CreatureSettings.StartingSpeedMin * 0.9), (int)(_gameData.CreatureSettings.StartingSpeedMin * 2));
-                _gameData.CreatureSettings.StartingSpeedMax = _rand.Next((int)(_gameData.CreatureSettings.StartingSpeedMax * 0.9), (int)(_gameData.CreatureSettings.StartingSpeedMax * 2));
-                _gameData.CreatureSettings.StartingLifespanMin = _rand.Next((int)(_gameData.CreatureSettings.StartingLifespanMin * 0.9), (int)(_gameData.CreatureSettings.StartingLifespanMin * 2));
-                _gameData.CreatureSettings.StartingLifespanMax = _rand.Next((int)(_gameData.CreatureSettings.StartingLifespanMax * 0.9), (int)(_gameData.CreatureSettings.StartingLifespanMax * 2));
-                _gameData.CreatureSettings.StartingEnergy = _rand.Next((int)(_gameData.CreatureSettings.StartingEnergy * 0.9), (int)(_gameData.CreatureSettings.StartingEnergy * 2));
+                _gameData.CreatureSettings.StartingEggIncubationMin = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIncubationMin * lowEndVal), (int)(_gameData.CreatureSettings.StartingEggIncubationMin * highEndVal));
+                _gameData.CreatureSettings.StartingEggIncubationMax = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIncubationMax * lowEndVal), (int)(_gameData.CreatureSettings.StartingEggIncubationMax * highEndVal));
+                _gameData.CreatureSettings.StartingEggIntervalMin = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIntervalMin * lowEndVal), (int)(_gameData.CreatureSettings.StartingEggIntervalMin * highEndVal));
+                _gameData.CreatureSettings.StartingEggIntervalMax = _rand.Next((int)(_gameData.CreatureSettings.StartingEggIntervalMax * lowEndVal), (int)(_gameData.CreatureSettings.StartingEggIntervalMax * highEndVal));
+                _gameData.CreatureSettings.StartingFoodDigestionMin = _rand.Next((int)(_gameData.CreatureSettings.StartingFoodDigestionMin * lowEndVal), (int)(_gameData.CreatureSettings.StartingFoodDigestionMin * highEndVal));
+                _gameData.CreatureSettings.StartingFoodDigestionMax = _rand.Next((int)(_gameData.CreatureSettings.StartingFoodDigestionMax * lowEndVal), (int)(_gameData.CreatureSettings.StartingFoodDigestionMax * highEndVal));
+                _gameData.CreatureSettings.StartingSpeedMin = _rand.Next((int)(_gameData.CreatureSettings.StartingSpeedMin * lowEndVal), (int)(_gameData.CreatureSettings.StartingSpeedMin * highEndVal));
+                _gameData.CreatureSettings.StartingSpeedMax = _rand.Next((int)(_gameData.CreatureSettings.StartingSpeedMax * lowEndVal), (int)(_gameData.CreatureSettings.StartingSpeedMax * highEndVal));
+                _gameData.CreatureSettings.StartingLifespanMin = _rand.Next((int)(_gameData.CreatureSettings.StartingLifespanMin * lowEndVal), (int)(_gameData.CreatureSettings.StartingLifespanMin * highEndVal));
+                _gameData.CreatureSettings.StartingLifespanMax = _rand.Next((int)(_gameData.CreatureSettings.StartingLifespanMax * lowEndVal), (int)(_gameData.CreatureSettings.StartingLifespanMax * highEndVal));
+                _gameData.CreatureSettings.StartingEnergy = _rand.Next((int)(_gameData.CreatureSettings.StartingEnergy * lowEndVal), (int)(_gameData.CreatureSettings.StartingEnergy * highEndVal));
                 
-                _gameData.MutationSettings.MutationBonusPercent = _rand.Next((int)(_gameData.MutationSettings.MutationBonusPercent * 0.9), (int)(_gameData.MutationSettings.MutationBonusPercent * 2));
+                _gameData.MutationSettings.MutationBonusPercent = _rand.Next((int)(_gameData.MutationSettings.MutationBonusPercent * lowEndVal), (int)(_gameData.MutationSettings.MutationBonusPercent * highEndVal));
 
-                _gameData.CARCASS_LIFESPAN = _rand.Next((int)(_gameData.CARCASS_LIFESPAN * 0.9), (int)(_gameData.CARCASS_LIFESPAN * 2));
-                _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * 0.9), (int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * 2));
-                _gameData.INITIAL_SPAWN_FOOD_VARIANCE = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * 0.9), (int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * 2));
-                _gameData.MAX_UNDIGESTED_FOOD = _rand.Next((int)(_gameData.MAX_UNDIGESTED_FOOD * 0.9), (int)(_gameData.MAX_UNDIGESTED_FOOD * 2));
+                _gameData.CARCASS_LIFESPAN = _rand.Next((int)(_gameData.CARCASS_LIFESPAN * lowEndVal), (int)(_gameData.CARCASS_LIFESPAN * highEndVal));
+                _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * lowEndVal), (int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * highEndVal));
+                _gameData.INITIAL_SPAWN_FOOD_VARIANCE = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * lowEndVal), (int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * highEndVal));
+                _gameData.MAX_UNDIGESTED_FOOD = _rand.Next((int)(_gameData.MAX_UNDIGESTED_FOOD * lowEndVal), (int)(_gameData.MAX_UNDIGESTED_FOOD * highEndVal));
             }
         }
         private void InitVariables()
@@ -1763,6 +1876,7 @@ namespace EvolutionConquest
             _inputState = new InputState();
             _player = new Player();
             _connectionManager = new ConnectionManager();
+            _debugTimer = new DebugTimer();
             _elapsedSecondsSinceTick = 0;
             _elapsedTimeSinceFoodGeneration = 0;
             _elapsedTicksSinceSecondProcessing = 0;
@@ -3172,6 +3286,20 @@ namespace EvolutionConquest
             builtList.Add("INITIAL_SPAWN_FOOD_AVG_LIFESPAN," + _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN);
             builtList.Add("INITIAL_SPAWN_FOOD_VARIANCE," + _gameData.INITIAL_SPAWN_FOOD_VARIANCE);
             builtList.Add("MAX_UNDIGESTED_FOOD," + _gameData.MAX_UNDIGESTED_FOOD);
+
+            return builtList;
+        }
+        private List<string> BuildDebugTimerList()
+        {
+            List<string> builtList = new List<string>();
+            Type type = _debugTimer.GetType();
+            PropertyInfo[] properties = type.GetProperties();
+
+            builtList.Add("Name,Value");
+            foreach (PropertyInfo property in properties)
+            {
+                builtList.Add(property.Name + "," + property.GetValue(_debugTimer, null));
+            }
 
             return builtList;
         }

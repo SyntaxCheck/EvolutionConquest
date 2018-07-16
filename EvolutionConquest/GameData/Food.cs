@@ -15,8 +15,10 @@ public class Food : SpriteBase
     public Vector2 TextSize { get; set; }
     public float Lifespan { get; set; } //How long the food lives
     public int ElapsedTicks { get; set; } //How many ticks the food has been alive for
+    public bool MarkedForDelete { get; set; }
 
     public Food()
     {
+        MarkedForDelete = false;
     }
 }

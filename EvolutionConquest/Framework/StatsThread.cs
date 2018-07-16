@@ -149,7 +149,7 @@ public class StatsThread
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText(System.IO.Path.Combine(_sharedGameData.SessionID.ToString(), "ErrorLogStats.txt"), "STATS Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_sharedGameData.SessionID.ToString(), "ErrorLogStats.txt"), DateTime.Now.ToString() + " - STATS Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
             }
             Thread.Sleep(100);
         }

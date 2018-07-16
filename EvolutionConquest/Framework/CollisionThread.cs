@@ -32,27 +32,60 @@ public class CollisionThread
                 {
                     if (_gameData.Creatures[i].IsAlive)
                     {
+                        //Food collision
+                        if ((_gameData.Creatures[i].IsHerbavore || _gameData.Creatures[i].IsScavenger) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
+                        {
+                            foreach (Point p in _gameData.Creatures[i].GridPositions)
+                            {
+                                lock (_gameData.LockFood)
+                                {
+                                    for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
+                                    {
+                                        if (!_gameData.MapGridData[p.X, p.Y].Food[k].MarkedForDelete)
+                                        {
+                                            if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && (_gameData.Creatures[i].IsScavenger || _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength))
+                                            {
+                                                if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                                                {
+                                                    Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
+                                                    _gameData.Creatures[i].UndigestedFood++;
+                                                    _gameData.Creatures[i].TotalFoodEaten++;
+                                                    _gameData.Creatures[i].Energy += _gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                                                    tmpFood.MarkedForDelete = true;
+                                                    //_gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
+                                                    //_gameData.Food.Remove(tmpFood);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         //Plant Collision
                         if ((_gameData.Creatures[i].IsHerbavore && !_gameData.Creatures[i].IsOmnivore) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
                         {
                             foreach (Point p in _gameData.Creatures[i].GridPositions)
                             {
-                                for (int k = (_gameData.MapGridData[p.X, p.Y].Plants.Count - 1); k >= 0; k--)
+                                lock (_gameData.LockPlants)
                                 {
-                                    if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)
+                                    for (int k = (_gameData.MapGridData[p.X, p.Y].Plants.Count - 1); k >= 0; k--)
                                     {
-                                        if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Plants[k].Bounds))
+                                        if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)
                                         {
-                                            //Make sure the creature is not on cooldown before attempting to eat from the food
-                                            if (_gameData.MapGridData[p.X, p.Y].Plants[k].Interactions.Count(t => t.CreatureID == _gameData.Creatures[i].CreatureId) <= 0)
+                                            if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Plants[k].Bounds))
                                             {
-                                                float foodAwarded = _gameData.MapGridData[p.X, p.Y].Plants[k].Eat(_gameData.Creatures[i].CreatureId);
-
-                                                if (foodAwarded > 0)
+                                                //Make sure the creature is not on cooldown before attempting to eat from the food
+                                                if (_gameData.MapGridData[p.X, p.Y].Plants[k].Interactions.Count(t => t.CreatureID == _gameData.Creatures[i].CreatureId) <= 0)
                                                 {
-                                                    _gameData.Creatures[i].UndigestedFood += foodAwarded;
-                                                    _gameData.Creatures[i].TotalFoodEaten++;
-                                                    _gameData.Creatures[i].Energy += ((_gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10)) * foodAwarded) * 1.1f; //Slower food digestion means you pull more energy from the food
+                                                    float foodAwarded = _gameData.MapGridData[p.X, p.Y].Plants[k].Eat(_gameData.Creatures[i].CreatureId);
+
+                                                    if (foodAwarded > 0)
+                                                    {
+                                                        _gameData.Creatures[i].UndigestedFood += foodAwarded;
+                                                        _gameData.Creatures[i].TotalFoodEaten++;
+                                                        _gameData.Creatures[i].Energy += ((_gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10)) * foodAwarded) * 1.1f; //Slower food digestion means you pull more energy from the food
+                                                    }
                                                 }
                                             }
                                         }
@@ -67,7 +100,7 @@ public class CollisionThread
             }
             catch (Exception ex)
             {
-                System.IO.File.WriteAllText(System.IO.Path.Combine(_gameData.SessionID.ToString(), "ErrorLogCollisionThread.txt"), "Collision Spread Thread Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_gameData.SessionID.ToString(), "ErrorLogCollisionThread.txt"), DateTime.Now.ToString() + " - Collision Thread Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
             }
 
             Thread.Sleep(33);
@@ -248,7 +281,7 @@ public class CollisionThread
             {
                 foreach (Food f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Food)
                 {
-                    if (f.FoodType == creature.FoodTypeInt && f.FoodStrength <= creature.Herbavore)
+                    if (!f.MarkedForDelete && f.FoodType == creature.FoodTypeInt && f.FoodStrength <= creature.Herbavore)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
                         if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
