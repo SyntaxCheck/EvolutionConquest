@@ -12,6 +12,7 @@ public class Camera
     public Camera()
     {
         Zoom = 0.5f;
+        CameraChange = true;
     }
 
     // Centered Position of the Camera in pixels.
@@ -22,6 +23,8 @@ public class Camera
     private float ZoomMax = 10.0f;
     // Current Rotation amount with 0.0f being standard orientation
     public float Rotation { get; private set; }
+    public Rectangle VisibleArea { get; set; }
+    public bool CameraChange { get; set; }
 
     // Height and width of the viewport window which we need to adjust
     // any time the player resizes the game window.
@@ -83,6 +86,9 @@ public class Camera
         {
             Zoom = ZoomMax;
         }
+
+        VisibleArea = ViewportWorldBoundry();
+        CameraChange = true;
     }
 
     // Move the camera in an X and Y amount based on the cameraMovement param.
@@ -100,6 +106,9 @@ public class Camera
         {
             Position = newPosition;
         }
+
+        VisibleArea = ViewportWorldBoundry();
+        CameraChange = true;
     }
 
     public Rectangle ViewportWorldBoundry()
@@ -118,6 +127,9 @@ public class Camera
     public void CenterOn(Vector2 position)
     {
         Position = position;
+
+        VisibleArea = ViewportWorldBoundry();
+        CameraChange = true;
     }
 
     // Center the camera on a specific cell in the map
@@ -228,7 +240,7 @@ public class Camera
                     bool idExists = false;
                     while (!idExists)
                     {
-                        if (gameData.Creatures.Where(t => t.SpeciesId == speciesId).Count() <= 0)
+                        if (gameData.Creatures.Where(t => t.SpeciesId == speciesId && t.IsAlive).Count() <= 0)
                         {
                             if (speciesId > 0)
                             {
@@ -247,7 +259,7 @@ public class Camera
 
                     for (int i = 0; i < gameData.Creatures.Count; i++)
                     {
-                        if (gameData.Creatures[i].SpeciesId == speciesId)
+                        if (gameData.Creatures[i].SpeciesId == speciesId && gameData.Creatures[i].IsAlive)
                         {
                             gameData.FocusIndex = i;
                             gameData.Focus = gameData.Creatures[gameData.FocusIndex];
@@ -270,7 +282,7 @@ public class Camera
                         else
                             searchIndex = gameData.Creatures.Count - 1;
 
-                        if (gameData.Creatures[searchIndex].SpeciesId == speciesId)
+                        if (gameData.Creatures[searchIndex].SpeciesId == speciesId && gameData.Creatures[searchIndex].IsAlive)
                         {
                             found = true;
                             gameData.FocusIndex = searchIndex;
@@ -335,7 +347,7 @@ public class Camera
                     bool idExists = false;
                     while (!idExists)
                     {
-                        if (gameData.Creatures.Where(t => t.SpeciesId == speciesId).Count() <= 0)
+                        if (gameData.Creatures.Where(t => t.SpeciesId == speciesId && t.IsAlive).Count() <= 0)
                         {
                             if (speciesId < speciesIdMax)
                             {
@@ -354,7 +366,7 @@ public class Camera
 
                     for (int i = 0; i < gameData.Creatures.Count; i++)
                     {
-                        if (gameData.Creatures[i].SpeciesId == speciesId)
+                        if (gameData.Creatures[i].SpeciesId == speciesId && gameData.Creatures[i].IsAlive)
                         {
                             gameData.FocusIndex = i;
                             gameData.Focus = gameData.Creatures[gameData.FocusIndex];
@@ -375,7 +387,7 @@ public class Camera
                     else
                         searchIndex = 0;
 
-                    if (gameData.Creatures[searchIndex].SpeciesId == speciesId)
+                    if (gameData.Creatures[searchIndex].SpeciesId == speciesId && gameData.Creatures[searchIndex].IsAlive)
                     {
                         found = true;
                         gameData.FocusIndex = searchIndex;
@@ -411,7 +423,7 @@ public class Camera
         }
         else if (inputState.IsNewKeyPress(Keys.H, controllingPlayer, out playerIndex)) //Focus on top Herbavore
         {
-            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsHerbavore && t.Herbavore > t.Carnivore && t.Herbavore > t.Scavenger).ToList();
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsHerbavore && t.Herbavore > t.Carnivore && t.Herbavore > t.Scavenger && t.IsAlive).ToList();
             if (tmpList.Count > 0)
             {
                 float highestHerbavore = tmpList.Max(t => t.Herbavore);
@@ -426,7 +438,7 @@ public class Camera
         }
         else if (inputState.IsNewKeyPress(Keys.C, controllingPlayer, out playerIndex)) //Focus on top Herbavore
         {
-            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsCarnivore && t.Carnivore > t.Herbavore && t.Carnivore > t.Scavenger).ToList();
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsCarnivore && t.Carnivore > t.Herbavore && t.Carnivore > t.Scavenger && t.IsAlive).ToList();
             if (tmpList.Count > 0)
             {
                 float highestCarnivore = tmpList.Max(t => t.Carnivore);
@@ -441,7 +453,7 @@ public class Camera
         }
         else if (inputState.IsNewKeyPress(Keys.V, controllingPlayer, out playerIndex)) //Focus on top Herbavore
         {
-            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsScavenger && t.Scavenger > t.Carnivore && t.Scavenger > t.Herbavore).ToList();
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsScavenger && t.Scavenger > t.Carnivore && t.Scavenger > t.Herbavore && t.IsAlive).ToList();
             if (tmpList.Count > 0)
             {
                 float highestScavenger = tmpList.Max(t => t.Scavenger);
@@ -456,7 +468,7 @@ public class Camera
         }
         else if (inputState.IsNewKeyPress(Keys.O, controllingPlayer, out playerIndex)) //Focus on top Omnivore
         {
-            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsOmnivore && t.Omnivore > t.Carnivore && t.Omnivore > t.Herbavore && t.Omnivore > t.Scavenger).ToList();
+            List<Creature> tmpList = gameData.Creatures.Where(t => t.IsOmnivore && t.Omnivore > t.Carnivore && t.Omnivore > t.Herbavore && t.Omnivore > t.Scavenger && t.IsAlive).ToList();
             if (tmpList.Count > 0)
             {
                 float highestOmnivore = tmpList.Max(t => t.Omnivore);
@@ -527,11 +539,11 @@ public class Camera
         if (cameraMovement != Vector2.Zero)
         {
             cameraMovement.Normalize();
+
+            // scale our movement to move 25 pixels per second
+            cameraMovement *= 25f;
+
+            MoveCamera(gameData.Settings.WorldSize, cameraMovement, true);
         }
-
-        // scale our movement to move 25 pixels per second
-        cameraMovement *= 25f;
-
-        MoveCamera(gameData.Settings.WorldSize, cameraMovement, true);
     }
 }

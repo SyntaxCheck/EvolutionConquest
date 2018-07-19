@@ -17,6 +17,7 @@ public class SpriteBase
     private int _BottomOfCold;
     private int _TopOfHot;
 
+    public bool DrawObject { get; set; }
     public int WorldSize
     {
         get { return _worldSize; }
@@ -38,6 +39,7 @@ public class SpriteBase
             _TopOfHot = WorldSize - (int)(WorldSize * (_climateHeightPercent * 0.01));
         }
     }
+    public int TicksPerSecond { get; set; }
     public Texture2D Texture
     {
         get
@@ -128,6 +130,7 @@ public class SpriteBase
 
     public SpriteBase()
     {
+        DrawObject = true;
         _position = Vector2.Zero;
         GridPositions = new List<Point>();
         OldGridPositions = new List<Point>();

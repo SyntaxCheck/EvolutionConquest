@@ -8,20 +8,86 @@ using System.Threading.Tasks;
 public class Plant : SpriteBase
 {
     private int[] RotationVals = { 0, 90, 180, 270 };
+    private bool _markForDelete;
+    private float _lifespan;
+    private int _eatCooldownTicks;
+    private int _spreadCooldownTicks;
+    private int _growCooldownTicks;
+    private int _growDelayOnEatTicks;
 
     public List<TextureContainer> TexturesList { get; set; }
     public string CurrentTexture;
-    public float Lifespan { get; set; } //How long the plant lives
+    public float Lifespan
+    {
+        get
+        {
+            return _lifespan;
+        }
+        set
+        {
+            _lifespan = value;
+            LifespanActual = _lifespan / (30 / TicksPerSecond);
+        }
+    } //How long the plant lives
+    public float LifespanActual { get; set; } //How long the plant lives adjusted for tick rate
     public float FoodAmount { get; set; } //Amount of food that this plant currently has
     public float FoodAmountCap { get; set; } //Maximum amount of food this plant can hold
     public float FoodAmountGivenOnGrow { get; set; } //Amount of food to add when the plant grows
     public float FoodAmountGivenOnEat { get; set; } //Amount of food a creature gets when they eat the plant
     public float FoodStrength { get; set; } //Only creatures with a Herbavore level at or above this can eat this food. Simulates hard to eat food or hard to reach food
-    public int EatCooldownTicks { get; set; } //How long of a cooldown before a creature can eat from the plant again
     public int NumberOfSaplings { get; set; } //How many baby plants to create when spreading
-    public int SpreadCooldownTicks { get; set; } //How long to wait before spreading new plants
-    public int GrowCooldownTicks { get; set; } //How long to wait before growing the plant
-    public int GrowDelayOnEatTicks { get; set; } //How long of a delay to apply when a plant is eaten before it can spread
+    public int EatCooldownTicks
+    {
+        get
+        {
+            return _eatCooldownTicks;
+        }
+        set
+        {
+            _eatCooldownTicks = value;
+            EatCooldownTicksActual = _eatCooldownTicks / (30 / TicksPerSecond);
+        }
+    } //How long of a cooldown before a creature can eat from the plant again
+    public int EatCooldownTicksActual { get; set; } //How long of a cooldown before a creature can eat from the plant again adjusted for tick rate
+    public int SpreadCooldownTicks
+    {
+        get
+        {
+            return _spreadCooldownTicks;
+        }
+        set
+        {
+            _spreadCooldownTicks = value;
+            SpreadCooldownTicksActual = _spreadCooldownTicks / (30 / TicksPerSecond);
+        }
+    } //How long to wait before spreading new plants
+    public int SpreadCooldownTicksActual { get; set; } //How long to wait before spreading new plants adjusted for tick rate
+    public int GrowCooldownTicks
+    {
+        get
+        {
+            return _growCooldownTicks;
+        }
+        set
+        {
+            _growCooldownTicks = value;
+            GrowCooldownTicksActual = _growCooldownTicks / (30 / TicksPerSecond);
+        }
+    } //How long to wait before growing the plant
+    public int GrowCooldownTicksActual { get; set; } //How long to wait before growing the plant adjusted for tick rate
+    public int GrowDelayOnEatTicks
+    {
+        get
+        {
+            return _growDelayOnEatTicks;
+        }
+        set
+        {
+            _growDelayOnEatTicks = value;
+            GrowDelayOnEatTicksActual = _growDelayOnEatTicks / (30 / TicksPerSecond);
+        }
+    } //How long of a delay to apply when a plant is eaten before it can spread
+    public int GrowDelayOnEatTicksActual { get; set; } //How long of a delay to apply when a plant is eaten before it can spread adjusted for tick rate
     public int FoodType { get; set; } //Blue = 0, Red = 1, Green = 2. Only Herbavores with their highest food type of this can eat this color of food
     public int TicksSinceBirth { get; set; } //Used to calculate tree plant
     public int TicksSinceLastEaten { get; set; } //Used for determining when to grow/spread
@@ -36,7 +102,18 @@ public class Plant : SpriteBase
     public float Rotation { get; set; } //How the plant is facing: 0, 90, 180, 270
     public List<Point> ExpandedGridPositions { get; set; }
     public List<Vector2> SaplingSpawnPoints { get; set; }
-    public bool MarkForDelete { get; set; }
+    public bool MarkForDelete
+    {
+        get
+        {
+            return _markForDelete;
+        }
+        set
+        {
+            _markForDelete = value;
+            DrawObject = !value;
+        }
+    }
 
     public Plant()
     {
@@ -67,8 +144,9 @@ public class Plant : SpriteBase
 
         return FoodAmount <= 0 ? 0 : FoodAmountGivenOnEat;
     }
-    public void InitializeNewPlant(Random rand, List<TextureContainer> textureList)
+    public void InitializeNewPlant(Random rand, List<TextureContainer> textureList, GameData gameData)
     {
+        TicksPerSecond = gameData.TicksPerSecond;
         TexturesList = textureList;
         Texture = TexturesList.First(t => t.Name == "T1").Texture;
         CurrentTexture = "T1";
@@ -80,9 +158,9 @@ public class Plant : SpriteBase
         FoodAmountGivenOnEat = 1;
         FoodStrength = 10;
         EatCooldownTicks = rand.Next(100, 200);
-        NumberOfSaplings = rand.Next(1, 2);
-        //SpreadCooldownTicks = rand.Next(2000, 2500);
-        SpreadCooldownTicks = rand.Next(1, 1);
+        NumberOfSaplings = rand.Next(0, 2);
+        SpreadCooldownTicks = rand.Next(1700, 2200);
+        //SpreadCooldownTicks = rand.Next(1, 1);
         GrowCooldownTicks = rand.Next(350, 450);
         //GrowCooldownTicks = rand.Next(175, 250);
         GrowDelayOnEatTicks = rand.Next(50, 60);
@@ -108,7 +186,7 @@ public class Plant : SpriteBase
             TicksSinceLastEaten = 0;
         }
 
-        if (TicksSinceLastGrow >= GrowCooldownTicks && TicksSinceLastEaten >= GrowDelayOnEatTicks)
+        if (TicksSinceLastGrow >= GrowCooldownTicksActual && TicksSinceLastEaten >= GrowDelayOnEatTicksActual)
         {
             TicksSinceLastGrow = 0;
             FoodAmount += FoodAmountGivenOnGrow;
@@ -117,7 +195,7 @@ public class Plant : SpriteBase
                 FoodAmount = FoodAmountCap;
         }
 
-        if (TicksSinceLastSpread >= SpreadCooldownTicks)
+        if (TicksSinceLastSpread >= SpreadCooldownTicksActual)
         {
             TicksSinceLastSpread = 0;
             SpreadPlant = true;
@@ -131,6 +209,7 @@ public class Plant : SpriteBase
 
         babyPlant.WorldSize = WorldSize;
         babyPlant.ClimateHeightPercent = ClimateHeightPercent;
+        babyPlant.TicksPerSecond = TicksPerSecond;
         babyPlant.TexturesList = TexturesList;
         babyPlant.Texture = TexturesList.First(t => t.Name == "T0").Texture;
         babyPlant.CurrentTexture = "T0";
@@ -146,7 +225,7 @@ public class Plant : SpriteBase
         babyPlant.GrowDelayOnEatTicks = GrowDelayOnEatTicks + (int)Math.Round(Mutate(rand, GrowDelayOnEatTicks, 2f), 0);
         babyPlant.FoodType = FoodType;
         babyPlant.Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
-        babyPlant.NumberOfSaplings = rand.Next(1, 1);
+        babyPlant.NumberOfSaplings = rand.Next(0, 2);
 
         return babyPlant;
     }

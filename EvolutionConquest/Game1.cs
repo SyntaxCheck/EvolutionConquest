@@ -62,6 +62,7 @@ namespace EvolutionConquest
         private Texture2D _deadCreaturesTexture;
         private Texture2D _foodOnMapTexture;
         private Texture2D _eggsOnMapTexture;
+        private Texture2D _plantsOnMapTexture;
         private Texture2D _saveButton;
         private Texture2D _closeButton;
         private Texture2D _defaultButton;
@@ -80,7 +81,7 @@ namespace EvolutionConquest
         private List<TextureContainer> _textureList;
         private double _elapsedSecondsSinceTick;
         private double _elapsedTimeSinceFoodGeneration;
-        private float _currentTicksPerSecond = 30;
+        private double _elapsedTimeSinceDebugTimeData;
         private float _tickSeconds;
         private float _elapsedTicksSinceSecondProcessing;
         private int _creatureIdCtr;
@@ -89,11 +90,15 @@ namespace EvolutionConquest
         private int _climateHeight;
         private bool _writeStats;
         private float _foodGenerationIntervalSeconds;
+        private float _foodLifeSpan;
+        private TimeSpan _totalElapsedTime;
         //Constants
         private const int SESSION_NUMBER = 1;
-        private const int MINUTES_TILL_GAMEOVER = 30;
+        private const int MINUTES_TILL_GAMEOVER = 60;
+        private const int MINUTES_TILL_DEBUG_TIME_DATA = 1;
         private const float SPRITE_FONT_SCALE = 0.5f;
-        private const float TICKS_PER_SECOND = 30;
+        private const int TICKS_PER_SECOND = 10;
+        private const int CREATURE_SPEED_BOOST = 3;
         private const int BORDER_WIDTH = 10;
         private const int GRID_CELL_SIZE = 50; //Seems to be the sweet spot for a 5,000 x 5,000 map based on the texture sizes we have so far
         private const float HUD_ICON_SCALE = 0.375f;
@@ -107,6 +112,7 @@ namespace EvolutionConquest
         private const bool ENABLE_CLIMATE = true;
         private const bool ENABLE_DATABASE_STATS = false;
         private const bool ENABLE_CSV_STATS = true;
+        private const bool ENABLE_DEBUG_TIME_DATA = true;
         //Colors
         private Color MAP_COLOR = Color.SandyBrown;
 
@@ -115,6 +121,8 @@ namespace EvolutionConquest
             _graphics = new GraphicsDeviceManager(this);
             _graphics.PreferredBackBufferHeight = 900;
             _graphics.PreferredBackBufferWidth = 1600;
+            _graphics.SynchronizeWithVerticalRetrace = false;
+            IsFixedTimeStep = false;
 
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
             _writeStats = true;
@@ -153,10 +161,12 @@ namespace EvolutionConquest
 
             //Load settings at the beginning
             _gameData = new GameData();
+            _gameData.GraphicsDevice = _graphics.GraphicsDevice;
             _gameData.Settings = SettingsHelper.ReadSettings("Settings.json");
             _gameData.CreatureSettings = SettingsHelper.ReadCreatureSettings("CreatureSettings.json");
             _gameData.MutationSettings = SettingsHelper.ReadMutationSettings("MutationSettings.json");
             _gameData.MaxCreatureUndigestedFood = _gameData.MAX_UNDIGESTED_FOOD;
+            _gameData.TicksPerSecond = (int)TICKS_PER_SECOND;
 
             // Create a new SpriteBatch, which can be used to draw textures.
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -166,6 +176,7 @@ namespace EvolutionConquest
             _deadCreaturesTexture = Content.Load<Texture2D>("dead");
             _foodOnMapTexture = Content.Load<Texture2D>("food");
             _eggsOnMapTexture = Content.Load<Texture2D>("eggs");
+            _plantsOnMapTexture = Content.Load<Texture2D>("plant");
             _blankMarker = Content.Load<Texture2D>("BlankMarker");
             _eggMarker = Content.Load<Texture2D>("EggMarker");
             _eggMarkerGreen = Content.Load<Texture2D>("EggMarkerGreen");
@@ -271,17 +282,18 @@ namespace EvolutionConquest
             //Spawn in fast despawning food
             for (int i = 0; i < amountOfFood; i++)
             {
-                SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10));
+                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10) / (30 / _gameData.TicksPerSecond), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10)) / (30 / _gameData.TicksPerSecond));
             }
             //Spawn in medium despawning food
             for (int i = 0; i < amountOfFood; i++)
             {
-                SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4));
+                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4) / (30 / _gameData.TicksPerSecond), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4)) / (30 / _gameData.TicksPerSecond));
             }
-            //Spawn in regular despawning food
+            //Spawn in food that does not despawn
             for (int i = 0; i < amountOfFood / 2; i++)
             {
-                SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN - _gameData.INITIAL_SPAWN_FOOD_VARIANCE, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN + _gameData.INITIAL_SPAWN_FOOD_VARIANCE));
+                //SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN - _gameData.INITIAL_SPAWN_FOOD_VARIANCE, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN + _gameData.INITIAL_SPAWN_FOOD_VARIANCE));
+                SpawnFood(-1f);
             }
 
             //Spawn in starting Plants
@@ -300,6 +312,7 @@ namespace EvolutionConquest
 
             //Calculate the food spawn speed
             _foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
+            _foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
 
             //Generate initial Map stats so that the stats do not read all 0's at the beginning
             _gameData.CalculateMapStatistics();
@@ -333,20 +346,20 @@ namespace EvolutionConquest
             _controlsListText.Add(" ");
             _controlsListText.Add("[F12] Toggle Control Menu");
 
-            //Create the chart
-            _chart = new Chart();
-            _chart.Width = 600;
-            _chart.Height = 300;
-            _chart.Location = new System.Drawing.Point(_graphics.PreferredBackBufferWidth - _chart.Width - 2, _graphics.PreferredBackBufferHeight - _chart.Height - 2);
-            _chart.Text = "Test";
-            _chart.Visible = false;
-            ChartArea chartArea1 = new ChartArea();
-            chartArea1.Name = "ChartArea1";
-            _chart.ChartAreas.Add(chartArea1);
-            Legend legend = new Legend();
-            _chart.Legends.Add(legend);
+            ////Create the chart
+            //_chart = new Chart();
+            //_chart.Width = 600;
+            //_chart.Height = 300;
+            //_chart.Location = new System.Drawing.Point(_graphics.PreferredBackBufferWidth - _chart.Width - 2, _graphics.PreferredBackBufferHeight - _chart.Height - 2);
+            //_chart.Text = "Test";
+            //_chart.Visible = false;
+            //ChartArea chartArea1 = new ChartArea();
+            //chartArea1.Name = "ChartArea1";
+            //_chart.ChartAreas.Add(chartArea1);
+            //Legend legend = new Legend();
+            //_chart.Legends.Add(legend);
 
-            Control.FromHandle(Window.Handle).Controls.Add(_chart);
+            //Control.FromHandle(Window.Handle).Controls.Add(_chart);
 
             if (ENABLE_DATABASE_STATS && _writeStats)
             {
@@ -370,7 +383,7 @@ namespace EvolutionConquest
 
             BuildSettingsPanel();
 
-            _statsThreadClass = new StatsThread(_gameData);
+            _statsThreadClass = new StatsThread(_gameData, _rand);
             _statsThread = new Thread(new ThreadStart(_statsThreadClass.Start));
             _statsThread.Start();
 
@@ -417,10 +430,19 @@ namespace EvolutionConquest
             {
                 bool tick = false;
 
-                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER / 2)
+                _elapsedTimeSinceDebugTimeData += gameTime.ElapsedGameTime.TotalSeconds;
+                if (_elapsedTimeSinceDebugTimeData / 60 >= MINUTES_TILL_DEBUG_TIME_DATA)
                 {
+                    //Write Debug file
+                    List<string> csvDebugTimerFile = BuildDebugTimerList();
+                    System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "DebugTimerFileRolling.csv"), csvDebugTimerFile.ToArray());
+                    csvDebugTimerFile = null; //Let GC cleanup the RAM before we build the next list
+
+                    _elapsedTimeSinceDebugTimeData = 0;
                     _debugTimer = new DebugTimer();
                 }
+
+                _totalElapsedTime = (gameTime.TotalGameTime - _resetTimeSpan);
 
                 DateTime debugDttm = DateTime.Now;
                 UpdateHandleInputs(gameTime);
@@ -439,7 +461,7 @@ namespace EvolutionConquest
 
                 if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER)
                 {
-                    _tickSeconds = 1 / _currentTicksPerSecond;
+                    _tickSeconds = 1f / TICKS_PER_SECOND;
 
                     _elapsedSecondsSinceTick += gameTime.ElapsedGameTime.TotalSeconds;
                     _elapsedTimeSinceFoodGeneration += gameTime.ElapsedGameTime.TotalSeconds;
@@ -474,6 +496,8 @@ namespace EvolutionConquest
                 {
                     Global.Camera.CenterOn(_gameData.Focus.Position);
                 }
+
+                UpdateHandleObjectsToBeDrawn(gameTime);
 
                 base.Update(gameTime);
             }
@@ -568,93 +592,70 @@ namespace EvolutionConquest
         {
             for (int i = _gameData.Creatures.Count - 1; i >= 0; i--)
             {
-                _gameData.Creatures[i].AdvanceTick(_rand);
-
-                //Check if the creature has died
-                if (_gameData.Creatures[i].ElapsedTicks > _gameData.Creatures[i].Lifespan || (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0))
+                if (_gameData.Creatures[i].IsAlive)
                 {
-                    int speciesId = _gameData.Creatures[i].SpeciesId;
-                    string speciesName = _gameData.Creatures[i].Species;
-                    string speciesType = _gameData.Creatures[i].GetCreatureTypeText();
+                    _gameData.Creatures[i].AdvanceTick(_rand);
 
-                    _gameData.Creatures[i].IsAlive = false;
-                    if (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0)
+                    //Check if the creature has died
+                    if (_gameData.Creatures[i].ElapsedTicks > _gameData.Creatures[i].LifespanActual || (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0))
                     {
-                        _gameData.Creatures[i].Energy = 0; //Not possible to have negative energy
-                        _gameData.Creatures[i].DeathCause = "Energy";
-                    }
-                    else
-                    {
-                        _gameData.Creatures[i].DeathCause = "Age";
-                    }
-                    _gameData.AddDeadCreatureToList(_gameData.Creatures[i]);
+                        int speciesId = _gameData.Creatures[i].SpeciesId;
+                        string speciesName = _gameData.Creatures[i].Species;
+                        string speciesType = _gameData.Creatures[i].GetCreatureTypeText();
 
-                    //Drop all food on the ground randomly around the area
-                    for (int k = 0; k < _gameData.Creatures[i].UndigestedFood; k++)
-                    {
-                        SpawnFood(new Vector2(_gameData.Creatures[i].Position.X + _rand.Next(-15, 15), _gameData.Creatures[i].Position.Y + _rand.Next(-15, 15)), _gameData.Creatures[i].Herbavore);
-                    }
-                    //Spawn in Carcass food for scavengers
-                    if (!_gameData.Creatures[i].IsScavenger && _rand.Next(0,100) > 25)
-                    {
-                        SpawnFood(new Vector2(_gameData.Creatures[i].Position.X, _gameData.Creatures[i].Position.Y), _gameData.Creatures[i].Herbavore, _gameData.CARCASS_LIFESPAN, true);
-                    }
-
-                    if (_gameData.Focus == _gameData.Creatures[i])
-                    {
-                        _gameData.Focus = null;
-                        _gameData.FocusIndex = -1;
-                    }
-                    _gameData.RemoveCreatureFromGrid(_gameData.Creatures[i], _gameData.Creatures[i].GridPositions);
-                    _gameData.Creatures.RemoveAt(i);
-
-                    //Check to see if this is the last of the species to show in EventLog
-                    bool found = false;
-                    foreach (Creature c in _gameData.Creatures)
-                    {
-                        if (c.SpeciesId == speciesId)
+                        _gameData.Creatures[i].IsAlive = false;
+                        if (ENABLE_ENERGY_DEATH && _gameData.Creatures[i].Energy < 0)
                         {
-                            found = true;
-                            break;
+                            _gameData.Creatures[i].Energy = 0; //Not possible to have negative energy
+                            _gameData.Creatures[i].DeathCause = "Energy";
                         }
-                    }
-                    if (!found)
-                    {
-                        foreach (Egg egg in _gameData.Eggs)
+                        else
                         {
-                            if (egg.Creature.SpeciesId == speciesId)
-                            {
-                                found = true;
-                                break;
-                            }
+                            _gameData.Creatures[i].DeathCause = "Age";
                         }
+                        _gameData.AddDeadCreatureToList(_gameData.Creatures[i]);
+
+                        //Drop all food on the ground randomly around the area
+                        for (int k = 0; k < _gameData.Creatures[i].UndigestedFood; k++)
+                        {
+                            SpawnFood(new Vector2(_gameData.Creatures[i].Position.X + _rand.Next(-15, 15), _gameData.Creatures[i].Position.Y + _rand.Next(-15, 15)), _gameData.Creatures[i].Herbavore);
+                        }
+                        //Spawn in Carcass food for scavengers
+                        if (!_gameData.Creatures[i].IsScavenger && _rand.Next(0, 100) > 50)
+                        {
+                            SpawnFood(new Vector2(_gameData.Creatures[i].Position.X, _gameData.Creatures[i].Position.Y), _gameData.Creatures[i].Herbavore, _gameData.CARCASS_LIFESPAN, true);
+                        }
+
+                        if (_gameData.Focus == _gameData.Creatures[i])
+                        {
+                            _gameData.Focus = null;
+                            _gameData.FocusIndex = -1;
+                        }
+                        //_gameData.RemoveCreatureFromGrid(_gameData.Creatures[i], _gameData.Creatures[i].GridPositions);
+                        //_gameData.Creatures.RemoveAt(i);
+
+                        continue;
                     }
-                    if (!found)
+                    //Check if we can lay a new egg
+                    if (_gameData.Creatures[i].DigestedFood > 0 && _gameData.Creatures[i].TicksSinceLastEgg >= _gameData.Creatures[i].EggIntervalActual && _gameData.Creatures[i].Energy >= _gameData.Creatures[i].GetEggCreateEnergyLoss(_gameData.Settings.EnergyConsumptionFromLayingEgg))
                     {
-                        _gameData.EventLog.Add("$[255,000,000]" + speciesType + " species '" + speciesName + "' has gone extinct");
+                        _gameData.Creatures[i].DigestedFood--; //Costs one digested food to lay an egg
+                        Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData, ref _creatureIdCtr);
+                        //TODO handle this maybe in the Creature class
+                        egg.Texture = _eggTexture;
+                        egg.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
+                        _gameData.AddEggToGrid(egg);
+                        _gameData.Eggs.Add(egg); //Add the new egg to gameData, the LayEgg function will calculate the Mutations
+                        _gameData.Creatures[i].EggCreateEnergyLoss(_gameData.Settings.EnergyConsumptionFromLayingEgg); //Pass in the CONST energy loss so that we can do additional calculations
+                    }
+                    //Do vision checks
+                    if (ENABLE_SIGHT)
+                    {
+                        //UpdateCreatureSight(gameTime, i);
                     }
 
-                    continue;
+                    UpdateMoveCreature(gameTime, i);
                 }
-                //Check if we can lay a new egg
-                if (_gameData.Creatures[i].DigestedFood > 0 && _gameData.Creatures[i].TicksSinceLastEgg >= _gameData.Creatures[i].EggInterval && _gameData.Creatures[i].Energy >= _gameData.Creatures[i].GetEggCreateEnergyLoss(_gameData.Settings.EnergyConsumptionFromLayingEgg))
-                {
-                    _gameData.Creatures[i].DigestedFood--; //Costs one digested food to lay an egg
-                    Egg egg = _gameData.Creatures[i].LayEgg(_rand, ref _names, _gameData, ref _creatureIdCtr);
-                    //TODO handle this maybe in the Creature class
-                    egg.Texture = _eggTexture;
-                    egg.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
-                    _gameData.AddEggToGrid(egg);
-                    _gameData.Eggs.Add(egg); //Add the new egg to gameData, the LayEgg function will calculate the Mutations
-                    _gameData.Creatures[i].EggCreateEnergyLoss(_gameData.Settings.EnergyConsumptionFromLayingEgg); //Pass in the CONST energy loss so that we can do additional calculations
-                }
-                //Do vision checks
-                if (ENABLE_SIGHT)
-                {
-                    //UpdateCreatureSight(gameTime, i);
-                }
-
-                UpdateMoveCreature(gameTime, i);
             }
         }
         private void UpdateTickFood(GameTime gameTime)
@@ -681,22 +682,19 @@ namespace EvolutionConquest
             }
 
             //Remove food that has expired
-            lock (_gameData.LockFood)
+            for (int i = _gameData.Food.Count - 1; i >= 0; i--)
             {
-                for (int i = _gameData.Food.Count - 1; i >= 0; i--)
+                try
                 {
                     _gameData.Food[i].ElapsedTicks++;
 
-                    if (_gameData.Food[i].Lifespan > 0 && _gameData.Food[i].ElapsedTicks > _gameData.Food[i].Lifespan)
+                    if (_gameData.Food[i].Lifespan > 0 && _gameData.Food[i].ElapsedTicks > _gameData.Food[i].LifespanActual)
                     {
-                        _gameData.Food[i].MarkedForDelete = true;
-
-                        //Food tmpFood = _gameData.Food[i];
-
-                        //_gameData.RemoveFoodFromGrid(tmpFood, tmpFood.GridPositions);
-                        //_gameData.Food.Remove(tmpFood);
+                        _gameData.Food[i].MarkForDelete = true;
                     }
                 }
+                catch (Exception) //Ignore this error, for performance reasons we do not want to lock the variable thus we will ignore errors
+                { }
             }
         }
         private void UpdateTickPlant(GameTime gameTime)
@@ -728,7 +726,7 @@ namespace EvolutionConquest
             _debugTimer.TimeUpdateOffTickHandleCollisionsAndMovement += (DateTime.Now - debugDttm).TotalMilliseconds;
 
             //Every second interval processing only when it is not a TICK. Graph only needs to be updated once every X seconds
-            if (_elapsedTicksSinceSecondProcessing >= TICKS_PER_SECOND * 5)
+            if (_elapsedTicksSinceSecondProcessing >= TICKS_PER_SECOND * 20)
             {
                 debugDttm = DateTime.Now;
                 UpdateOffTickInterval(gameTime);
@@ -752,52 +750,58 @@ namespace EvolutionConquest
         private void UpdateOffTickIntervalGraphs(GameTime gameTime)
         {
             //Generate Graph data
-            _gameData.CalculateChartData(_rand); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
+            //Moved to Stats thread
+            //_gameData.CalculateChartData(_rand); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
 
             if (_gameData.ShowChart)
             {
-                if (!_chart.Visible && _gameData.ChartDataTop.Count > 0 && !_gameData.ShowSettingsPanel)
+                _gameData.LockChart.Locker = "Main";
+                lock (_gameData.LockChart)
                 {
-                    _chart.Visible = true;
-                }
-                if (_chart.Series != null)
-                {
-                    _chart.Series.Clear();
-                    for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
+                    if (!_chart.Visible && _gameData.ChartDataTop.Count > 0 && !_gameData.ShowSettingsPanel)
                     {
-                        int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
-                        string name = String.Empty;
-                        //System.Drawing.Color seriesColor = System.Drawing.Color.White;
-
-                        name = _gameData.ChartDataTop[i].Name;
-
-                        if (name.Length > 15)
-                            name = name.Substring(0, 12) + "...";
-
-                        if (count != null)
+                        _chart.Visible = true;
+                    }
+                    if (_chart.Series != null)
+                    {
+                        _chart.Series.Clear();
+                        for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
                         {
-                            name += "(" + count + ")";
-                        }
-                        if (!String.IsNullOrEmpty(_gameData.ChartDataTop[i].CreatureType))
-                        {
-                            name = "(" + _gameData.ChartDataTop[i].CreatureType.Substring(0,1) + ")" + name;
-                        }
+                            int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
+                            string name = String.Empty;
+                            //System.Drawing.Color seriesColor = System.Drawing.Color.White;
 
-                        _chart.Series.Add(name);
-                        _chart.Series[name].XValueType = ChartValueType.Int32;
-                        _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
-                        _chart.Series[name].BorderWidth = 3;
-                        if (_gameData.ChartDataTop[i].ChartColor != System.Drawing.Color.White)
-                        {
-                            _chart.Series[name].Color = _gameData.ChartDataTop[i].ChartColor;
-                        }
+                            name = _gameData.ChartDataTop[i].Name;
 
-                        for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
-                        {
-                            _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
+                            if (name.Length > 15)
+                                name = name.Substring(0, 12) + "...";
+
+                            if (count != null)
+                            {
+                                name += "(" + count + ")";
+                            }
+                            if (!String.IsNullOrEmpty(_gameData.ChartDataTop[i].CreatureType))
+                            {
+                                name = "(" + _gameData.ChartDataTop[i].CreatureType.Substring(0, 1) + ")" + name;
+                            }
+
+                            _chart.Series.Add(name);
+                            _chart.Series[name].XValueType = ChartValueType.Int32;
+                            _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
+                            _chart.Series[name].BorderWidth = 3;
+                            if (_gameData.ChartDataTop[i].ChartColor != System.Drawing.Color.White)
+                            {
+                                _chart.Series[name].Color = _gameData.ChartDataTop[i].ChartColor;
+                            }
+
+                            for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
+                            {
+                                _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
+                            }
                         }
                     }
                 }
+                _gameData.LockChart.Locker = "";
             }
         }
         private void UpdateOffTickIntervalMapStats(GameTime gameTime)
@@ -810,7 +814,7 @@ namespace EvolutionConquest
             {
                 for (int i = _gameData.Food.Count - 1; i >= 0; i--)
                 {
-                    if (_gameData.Food[i].MarkedForDelete)
+                    if (_gameData.Food[i].MarkForDelete)
                     {
                         _gameData.RemoveFoodFromGrid(_gameData.Food[i], _gameData.Food[i].GridPositions);
                         _gameData.Food.Remove(_gameData.Food[i]);
@@ -831,7 +835,7 @@ namespace EvolutionConquest
                     {
                         for (int k = _gameData.Plants[i].Interactions.Count - 1; k >= 0; k--)
                         {
-                            if (_gameData.Plants[i].Interactions[k].ElapsedTicks >= _gameData.Plants[i].EatCooldownTicks)
+                            if (_gameData.Plants[i].Interactions[k].ElapsedTicks >= _gameData.Plants[i].EatCooldownTicksActual)
                             {
                                 _gameData.Plants[i].Interactions.RemoveAt(k);
                             }
@@ -839,6 +843,51 @@ namespace EvolutionConquest
                     }
                 }
             }
+            if (String.IsNullOrEmpty(_gameData.LockCreatures.Locker))
+            {
+                lock (_gameData.LockCreatures)
+                {
+                    for (int i = _gameData.Creatures.Count - 1; i >= 0; i--)
+                    {
+                        if (!_gameData.Creatures[i].IsAlive)
+                        {
+                            //Check to see if this is the last of the species to show in EventLog
+                            int speciesId = _gameData.Creatures[i].SpeciesId;
+                            string speciesType = _gameData.Creatures[i].GetCreatureTypeText();
+                            string speciesName = _gameData.Creatures[i].Species;
+                            bool found = false;
+
+                            foreach (Creature c in _gameData.Creatures)
+                            {
+                                if (c.SpeciesId == speciesId && c.IsAlive)
+                                {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found)
+                            {
+                                foreach (Egg egg in _gameData.Eggs)
+                                {
+                                    if (egg.Creature.SpeciesId == speciesId)
+                                    {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!found)
+                            {
+                                _gameData.EventLog.Add("$[255,000,000]" + speciesType + " species '" + speciesName + "' has gone extinct");
+                            }
+
+                            _gameData.RemoveCreatureFromGrid(_gameData.Creatures[i], _gameData.Creatures[i].GridPositions);
+                            _gameData.Creatures.RemoveAt(i);
+                        }
+                    }
+                }
+            }
+            UpdateOffTickEventCheckCleanup(gameTime);
         }
         private void UpdateOffTickHandleCollisionsAndMovement(GameTime gameTime)
         {
@@ -986,7 +1035,7 @@ namespace EvolutionConquest
                                             }
 
                                             deadCreaturesToRemove.Add(tmpCreature);
-                                            _gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
+                                            //_gameData.RemoveCreatureFromGrid(tmpCreature, _gameData.MapGridData[p.X, p.Y].Creatures[k].GridPositions);
                                         }
                                     }
                                 }
@@ -1000,38 +1049,8 @@ namespace EvolutionConquest
 
             foreach (Creature c in deadCreaturesToRemove)
             {
-                int speciesId = c.SpeciesId;
-                string speciesName = c.Species;
-                string speciesType = c.GetCreatureTypeText();
-
                 _gameData.AddDeadCreatureToList(c);
-                _gameData.Creatures.Remove(c);
-
-                //Check to see if this is the last of the species to show in EventLog
-                bool found = false;
-                foreach (Creature ic in _gameData.Creatures)
-                {
-                    if (ic.SpeciesId == speciesId)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    foreach (Egg egg in _gameData.Eggs)
-                    {
-                        if (egg.Creature.SpeciesId == speciesId)
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (!found)
-                {
-                    _gameData.EventLog.Add("$[255,000,000]" + speciesType + " species '" + speciesName + "' has gone extinct");
-                }
+                //_gameData.Creatures.Remove(c);
             }
         }
         private void UpdateOffTickSpawnFood(GameTime gameTime)
@@ -1045,7 +1064,7 @@ namespace EvolutionConquest
         }
         private void UpdateOffTickEventCheckCleanup(GameTime gameTim)
         {
-            _gameData.PruneEventLog(EVENT_LOG_DISPLAY_COUNT);
+            //_gameData.PruneEventLog(EVENT_LOG_DISPLAY_COUNT);
         }
         private void UpdateHandleInputs(GameTime gameTime)
         {
@@ -1156,6 +1175,49 @@ namespace EvolutionConquest
             }
             #pragma warning restore CS0162 // Unreachable code detected
         }
+        private void UpdateHandleObjectsToBeDrawn(GameTime gameTime)
+        {
+            if (Global.Camera.CameraChange && _gameData.Focus == null)
+            {
+                Global.Camera.CameraChange = false;
+
+                for (int i = 0; i < _gameData.Food.Count(); i++)
+                {
+                    if (!_gameData.Food[i].MarkForDelete && Global.Camera.VisibleArea.Contains(_gameData.Food[i].Position))
+                    {
+                        _gameData.Food[i].DrawObject = true;
+                    }
+                    else
+                    {
+                        _gameData.Food[i].DrawObject = false;
+                    }
+                }
+
+                for (int i = 0; i < _gameData.Plants.Count(); i++)
+                {
+                    if (!_gameData.Plants[i].MarkForDelete && Global.Camera.VisibleArea.Contains(_gameData.Plants[i].Position))
+                    {
+                        _gameData.Plants[i].DrawObject = true;
+                    }
+                    else
+                    {
+                        _gameData.Plants[i].DrawObject = false;
+                    }
+                }
+
+                for (int i = 0; i < _gameData.Creatures.Count(); i++)
+                {
+                    if (_gameData.Creatures[i].IsAlive && Global.Camera.VisibleArea.Contains(_gameData.Creatures[i].Position))
+                    {
+                        _gameData.Creatures[i].DrawObject = true;
+                    }
+                    else
+                    {
+                        _gameData.Creatures[i].DrawObject = false;
+                    }
+                }
+            }
+        }
 
         //Update Creature functions
         private void UpdateMoveCreature(GameTime gameTime, int creatureIndex)
@@ -1163,7 +1225,8 @@ namespace EvolutionConquest
             if (_gameData.Creatures[creatureIndex].IsAlive)
             {
                 //Move the creature
-                _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * ((_gameData.Creatures[creatureIndex].Speed / 10f) * (_currentTicksPerSecond / TICKS_PER_SECOND)) * TICKS_PER_SECOND * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                //_gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * (_gameData.Creatures[creatureIndex].Speed / 10f) * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _gameData.Creatures[creatureIndex].Position += _gameData.Creatures[creatureIndex].Direction * (_gameData.Creatures[creatureIndex].Speed) * CREATURE_SPEED_BOOST * (float)gameTime.ElapsedGameTime.TotalSeconds;
                 _gameData.Creatures[creatureIndex].Energy -= _gameData.Creatures[creatureIndex].CalculateCreatureEnergyDepletion(_gameData);
                 _gameData.Creatures[creatureIndex].GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
 
@@ -1217,6 +1280,45 @@ namespace EvolutionConquest
                 debugDttm = DateTime.Now;
                 DrawDebugData();
                 _debugTimer.TimeDrawDebugData += (DateTime.Now - debugDttm).TotalMilliseconds;
+
+                //DateTime debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawClimates();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawClimates += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawFood();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawFood += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawEggs();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawEggs += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawCreatures();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawCreatures += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawBorders();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawBorders += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawPlants();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawPlants += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //_spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, null, null, null, null, Global.Camera.TranslationMatrix);
+                //DrawHighlightCreatures();
+                //_debugTimer.TimeDrawHighlightCreatures += (DateTime.Now - debugDttm).TotalMilliseconds;
+                //debugDttm = DateTime.Now;
+                //DrawDebugData();
+                //_spriteBatch.End();
+                //_debugTimer.TimeDrawDebugData += (DateTime.Now - debugDttm).TotalMilliseconds;
             }
             catch (Exception ex)
             {
@@ -1235,7 +1337,7 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Creatures.Count; i++)
             {
-                if (_gameData.Creatures[i].IsAlive)
+                if (_gameData.Creatures[i].DrawObject || (_gameData.Focus != null && _gameData.Creatures[i].IsAlive))
                 {
                     _spriteBatch.Draw(_gameData.Creatures[i].Texture, _gameData.Creatures[i].Position, null, _gameData.Creatures[i].CreatureColor, _gameData.Creatures[i].Rotation, _gameData.Creatures[i].Origin, 1f, SpriteEffects.None, 1f);
                 }
@@ -1252,7 +1354,7 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Food.Count; i++)
             {
-                if (!_gameData.Food[i].MarkedForDelete)
+                if (_gameData.Food[i].DrawObject || (_gameData.Focus != null && !_gameData.Food[i].MarkForDelete))
                 {
                     _spriteBatch.Draw(_gameData.Food[i].Texture, _gameData.Food[i].Position, null, _gameData.Food[i].FoodColor, 0f, _gameData.Food[i].Origin, 1f, SpriteEffects.None, 1f);
                     if (_gameData.ShowFoodStrength)
@@ -1266,7 +1368,7 @@ namespace EvolutionConquest
         {
             for (int i = 0; i < _gameData.Plants.Count; i++)
             {
-                if (!_gameData.Plants[i].MarkForDelete)
+                if (_gameData.Plants[i].DrawObject || (_gameData.Focus != null && !_gameData.Plants[i].MarkForDelete))
                 {
                     _spriteBatch.Draw(_gameData.Plants[i].Texture, _gameData.Plants[i].Position, null, Color.White, _gameData.Plants[i].Rotation, _gameData.Plants[i].Origin, 1f, SpriteEffects.None, 1f);
                     if (_gameData.ShowDebugData)
@@ -1458,17 +1560,18 @@ namespace EvolutionConquest
             {
                 DrawPanelWithText(_panelHeaderFont, "Creature Statistics", _diagFont, _gameData.Focus.GetCreatureInformation(), Global.Anchor.LeftCenter, (int)Math.Ceiling(_diagFont.MeasureString("Position: {X:-100.000000, Y:-100.000000}").X), 0, 20);
             }
-            else if(_gameData.ShowEventLogPanel && _gameData.EventLog.Count > 0)
-            {
-                DrawPanelWithText(_panelHeaderFont, "Event Log", _diagFont, _gameData.GetEventsForDisplay(EVENT_LOG_DISPLAY_COUNT), Global.Anchor.TopLeft, (int)Math.Ceiling(_diagFont.MeasureString("Species 'Ferniandos' has mutated into 'Frainsiscos'").X), 0, 20);
-            }
+            //else if(_gameData.ShowEventLogPanel && _gameData.EventLog.Count > 0)
+            //{
+            //    DrawPanelWithText(_panelHeaderFont, "Event Log", _diagFont, _gameData.GetEventsForDisplay(EVENT_LOG_DISPLAY_COUNT), Global.Anchor.TopLeft, (int)Math.Ceiling(_diagFont.MeasureString("Species 'Ferniandos' has mutated into 'Frainsiscos'").X), 0, 20);
+            //}
         }
         private void DrawMapStatistics()
         {
             int topBuffer = 10;
             int topBufferNumers = 13;
             int spacing = 5;
-            int startingPos = (int)(_graphics.PreferredBackBufferWidth * 0.35);
+            //int startingPos = (int)(_graphics.PreferredBackBufferWidth * 0.35);
+            int startingPos = (int)(_graphics.PreferredBackBufferWidth * 0.25);
             int currentPos = startingPos;
             int menuSpacing = 63;
 
@@ -1478,11 +1581,11 @@ namespace EvolutionConquest
             _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.AliveCreatures.ToString("#,##0") + "(" + _gameData.MapStatistics.UniqueSpecies.ToString("#,##0") + ")", new Vector2(currentPos, topBufferNumers), Color.Black);
             currentPos += menuSpacing + (int)(menuSpacing * .5);
 
-            //Dead creatures
-            _spriteBatch.Draw(_deadCreaturesTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
-            currentPos += (int)Math.Ceiling(_deadCreaturesTexture.Width * HUD_ICON_SCALE) + spacing;
-            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.DeadCreatures.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
-            currentPos += menuSpacing;
+            ////Dead creatures
+            //_spriteBatch.Draw(_deadCreaturesTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            //currentPos += (int)Math.Ceiling(_deadCreaturesTexture.Width * HUD_ICON_SCALE) + spacing;
+            //_spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.DeadCreatures.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            //currentPos += menuSpacing;
 
             //Eggs on map
             _spriteBatch.Draw(_eggsOnMapTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
@@ -1494,6 +1597,12 @@ namespace EvolutionConquest
             _spriteBatch.Draw(_foodOnMapTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
             currentPos += (int)Math.Ceiling(_foodOnMapTexture.Width * HUD_ICON_SCALE) + spacing;
             _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.FoodOnMap.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
+            currentPos += menuSpacing;
+
+            //Plants on map
+            _spriteBatch.Draw(_plantsOnMapTexture, new Vector2(currentPos, topBuffer), null, Color.White, 0f, Vector2.Zero, HUD_ICON_SCALE, SpriteEffects.None, 1);
+            currentPos += (int)Math.Ceiling(_eggsOnMapTexture.Width * HUD_ICON_SCALE) + spacing;
+            _spriteBatch.DrawString(_panelHeaderFont, _gameData.MapStatistics.PlantsOnMap.ToString("#,##0"), new Vector2(currentPos, topBufferNumers), Color.Black);
             currentPos += menuSpacing;
 
             //Percent Herbavore
@@ -1628,6 +1737,7 @@ namespace EvolutionConquest
         {
             //_spriteBatch.DrawString(_diagFont, "FPS: " + _fps + "   " + (int)_totalElapsedSeconds, new Vector2(5, 5), Color.Black);
             _spriteBatch.DrawString(_diagFont, "FPS: " + _fps, new Vector2(2, 2), Color.Black);
+            _spriteBatch.DrawString(_diagFont, "Runtime: " + _totalElapsedTime.ToString(), new Vector2(2, _graphics.PreferredBackBufferHeight - _diagTextHeight - 2), Color.Black);
         }
         private void DrawMarkers()
         {
@@ -1867,6 +1977,38 @@ namespace EvolutionConquest
                 _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * lowEndVal), (int)(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN * highEndVal));
                 _gameData.INITIAL_SPAWN_FOOD_VARIANCE = _rand.Next((int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * lowEndVal), (int)(_gameData.INITIAL_SPAWN_FOOD_VARIANCE * highEndVal));
                 _gameData.MAX_UNDIGESTED_FOOD = _rand.Next((int)(_gameData.MAX_UNDIGESTED_FOOD * lowEndVal), (int)(_gameData.MAX_UNDIGESTED_FOOD * highEndVal));
+
+                //Handle Mins greater than the max by swapping the min for the max
+                if (_gameData.CreatureSettings.StartingEggIncubationMin > _gameData.CreatureSettings.StartingEggIncubationMax)
+                {
+                    float tmp = _gameData.CreatureSettings.StartingEggIncubationMin;
+                    _gameData.CreatureSettings.StartingEggIncubationMin = _gameData.CreatureSettings.StartingEggIncubationMax;
+                    _gameData.CreatureSettings.StartingEggIncubationMax = tmp;
+                }
+                if (_gameData.CreatureSettings.StartingEggIntervalMin > _gameData.CreatureSettings.StartingEggIntervalMax)
+                {
+                    float tmp = _gameData.CreatureSettings.StartingEggIntervalMin;
+                    _gameData.CreatureSettings.StartingEggIntervalMin = _gameData.CreatureSettings.StartingEggIntervalMax;
+                    _gameData.CreatureSettings.StartingEggIntervalMax = tmp;
+                }
+                if (_gameData.CreatureSettings.StartingFoodDigestionMin > _gameData.CreatureSettings.StartingFoodDigestionMax)
+                {
+                    float tmp = _gameData.CreatureSettings.StartingFoodDigestionMin;
+                    _gameData.CreatureSettings.StartingFoodDigestionMin = _gameData.CreatureSettings.StartingFoodDigestionMax;
+                    _gameData.CreatureSettings.StartingFoodDigestionMax = tmp;
+                }
+                if (_gameData.CreatureSettings.StartingSpeedMin > _gameData.CreatureSettings.StartingSpeedMax)
+                {
+                    float tmp = _gameData.CreatureSettings.StartingSpeedMin;
+                    _gameData.CreatureSettings.StartingSpeedMin = _gameData.CreatureSettings.StartingSpeedMax;
+                    _gameData.CreatureSettings.StartingSpeedMax = tmp;
+                }
+                if (_gameData.CreatureSettings.StartingLifespanMin > _gameData.CreatureSettings.StartingLifespanMax)
+                {
+                    float tmp = _gameData.CreatureSettings.StartingLifespanMin;
+                    _gameData.CreatureSettings.StartingLifespanMin = _gameData.CreatureSettings.StartingLifespanMax;
+                    _gameData.CreatureSettings.StartingLifespanMax = tmp;
+                }
             }
         }
         private void InitVariables()
@@ -1879,6 +2021,7 @@ namespace EvolutionConquest
             _debugTimer = new DebugTimer();
             _elapsedSecondsSinceTick = 0;
             _elapsedTimeSinceFoodGeneration = 0;
+            _elapsedTimeSinceDebugTimeData = 0;
             _elapsedTicksSinceSecondProcessing = 0;
             _fps = 0;
             _frames = 0;
@@ -1889,6 +2032,7 @@ namespace EvolutionConquest
             _elapsedTicksSinceFoodUpgrade = 0;
             _gameData.CurrentMaxFoodLevel = 2;
             _climateHeight = (int)(_gameData.Settings.WorldSize * (_gameData.Settings.ClimateHeightPercent * 0.01));
+            _totalElapsedTime = new TimeSpan();
         }
         private void BuildSettingsPanel()
         {
@@ -2081,7 +2225,7 @@ namespace EvolutionConquest
             tmpSlider.MarkerHeight = 20;
             tmpSlider.MarkerWidth = 10;
             tmpSlider.MinValue = 0;
-            tmpSlider.MaxValue = 250;
+            tmpSlider.MaxValue = 500;
             tmpSlider.CurrentValue = _gameData.Settings.StartingPlantRatio;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
@@ -2177,7 +2321,7 @@ namespace EvolutionConquest
             tmpSlider.MarkerHeight = 20;
             tmpSlider.MarkerWidth = 10;
             tmpSlider.MinValue = 0;
-            tmpSlider.MaxValue = 100;
+            tmpSlider.MaxValue = 200;
             tmpSlider.CurrentValue = _gameData.Settings.EnergyDepletionPercentFromComplexity;
             tmpSlider.ShowPercent = true;
             tmpSlider.FillSlider = true;
@@ -3269,6 +3413,7 @@ namespace EvolutionConquest
             builtList.Add("Dead Creatures," + _gameData.MapStatistics.DeadCreatures.ToString());
             builtList.Add("Eggs On Map," + _gameData.MapStatistics.EggsOnMap.ToString());
             builtList.Add("Food On Map," + _gameData.MapStatistics.FoodOnMap.ToString());
+            builtList.Add("Plants On Map," + _gameData.MapStatistics.PlantsOnMap.ToString());
             builtList.Add("Percent Herbavore," + _gameData.MapStatistics.PercentHerbavore.ToString());
             builtList.Add("Percent Carnivore," + _gameData.MapStatistics.PercentCarnivore.ToString());
             builtList.Add("Percent Scavenger," + _gameData.MapStatistics.PercentScavenger.ToString());
@@ -3295,17 +3440,28 @@ namespace EvolutionConquest
             Type type = _debugTimer.GetType();
             PropertyInfo[] properties = type.GetProperties();
 
-            builtList.Add("Name,Value");
+            double totalTime = 0;
             foreach (PropertyInfo property in properties)
             {
-                builtList.Add(property.Name + "," + property.GetValue(_debugTimer, null));
+                totalTime += (double)property.GetValue(_debugTimer, null);
+            }
+
+            builtList.Add("Name,Value,Percent");
+            foreach (PropertyInfo property in properties)
+            {
+                double percent = (double)property.GetValue(_debugTimer, null);
+                percent = percent / totalTime;
+                percent = Math.Round(percent, 2);
+
+                builtList.Add(property.Name + "," + property.GetValue(_debugTimer, null) + "," + percent.ToString());
             }
 
             return builtList;
         }
         private void SpawnFood()
         {
-            SpawnFood(-1f);
+            //SpawnFood(-1f);
+            SpawnFood(_foodLifeSpan);
         }
         private void SpawnFood(float lifeSpan)
         {
@@ -3315,7 +3471,9 @@ namespace EvolutionConquest
         private void SpawnFood(Vector2 position, float maxHerbavoreLevel)
         {
             //Pass in -1 lifespan to disable food life making the food last forever
-            SpawnFood(position, maxHerbavoreLevel, -1f);
+            //SpawnFood(position, maxHerbavoreLevel, -1f);
+
+            SpawnFood(position, maxHerbavoreLevel, _foodLifeSpan);
         }
         private void SpawnFood(Vector2 position, float maxHerbavoreLevel, float lifeSpan)
         {
@@ -3324,8 +3482,10 @@ namespace EvolutionConquest
         private void SpawnFood(Vector2 position, float maxHerbavoreLevel, float lifeSpan, bool fromDeath)
         {
             Food food = new Food();
+
             food.WorldSize = _gameData.Settings.WorldSize;
             food.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
+            food.TicksPerSecond = _gameData.TicksPerSecond;
             if (fromDeath)
             {
                 food.Texture = _carcassTexture;
@@ -3392,7 +3552,7 @@ namespace EvolutionConquest
             Plant plant = new Plant();
             plant.WorldSize = _gameData.Settings.WorldSize;
             plant.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            plant.InitializeNewPlant(_rand, _textureList);
+            plant.InitializeNewPlant(_rand, _textureList, _gameData);
             plant.Position = new Vector2(_rand.Next(plant.Texture.Width, _gameData.Settings.WorldSize - plant.Texture.Width), _rand.Next(plant.Texture.Height, _gameData.Settings.WorldSize - plant.Texture.Height));
             plant.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
             plant.GetExpandedGridPositions(_gameData); //Calculate expanded grid positions after the position has been set
@@ -3592,7 +3752,7 @@ namespace EvolutionConquest
             Plant plant = new Plant();
             plant.WorldSize = _gameData.Settings.WorldSize;
             plant.ClimateHeightPercent = _gameData.Settings.ClimateHeightPercent;
-            plant.InitializeNewPlant(_rand, _textureList);
+            plant.InitializeNewPlant(_rand, _textureList, _gameData);
             plant.Position = new Vector2(_gameData.Settings.WorldSize - plant.Texture.Width / 2, _gameData.Settings.WorldSize - plant.Texture.Height / 2);
             plant.GetGridPositionsForSpriteBase(GRID_CELL_SIZE, _gameData);
             plant.GetExpandedGridPositions(_gameData); //Calculate expanded grid positions after the position has been set

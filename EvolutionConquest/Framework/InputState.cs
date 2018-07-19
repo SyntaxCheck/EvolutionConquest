@@ -219,22 +219,22 @@ public class InputState
     public bool IsScrollLeft(PlayerIndex? controllingPlayer)
     {
         PlayerIndex playerIndex;
-        return IsKeyPressed(Keys.A, controllingPlayer, out playerIndex);
+        return IsKeyPressed(Keys.A, controllingPlayer, out playerIndex) == true ? true : IsKeyPressed(Keys.Left, controllingPlayer, out playerIndex);
     }
     public bool IsScrollRight(PlayerIndex? controllingPlayer)
     {
         PlayerIndex playerIndex;
-        return IsKeyPressed(Keys.D, controllingPlayer, out playerIndex);
+        return IsKeyPressed(Keys.D, controllingPlayer, out playerIndex) == true ? true : IsKeyPressed(Keys.Right, controllingPlayer, out playerIndex);
     }
     public bool IsScrollUp(PlayerIndex? controllingPlayer)
     {
         PlayerIndex playerIndex;
-        return IsKeyPressed(Keys.W, controllingPlayer, out playerIndex);
+        return IsKeyPressed(Keys.W, controllingPlayer, out playerIndex) == true ? true : IsKeyPressed(Keys.Up, controllingPlayer, out playerIndex);
     }
     public bool IsScrollDown(PlayerIndex? controllingPlayer)
     {
         PlayerIndex playerIndex;
-        return IsKeyPressed(Keys.S, controllingPlayer, out playerIndex);
+        return IsKeyPressed(Keys.S, controllingPlayer, out playerIndex) == true ? true : IsKeyPressed(Keys.Down, controllingPlayer, out playerIndex);
     }
     public bool IsScrollWheelUp(PlayerIndex? controllingPlayer)
     {

@@ -3,14 +3,15 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Forms.DataVisualization.Charting;
 
 public class GameData
 {
     //Should be changed back to constants once we have finished balance analysis
-    public int INITIAL_SPAWN_FOOD_AVG_LIFESPAN = 1000;
-    public int INITIAL_SPAWN_FOOD_VARIANCE = 750;
-    public int CARCASS_LIFESPAN = 300;
-    public int MAX_UNDIGESTED_FOOD = 5;
+    public int INITIAL_SPAWN_FOOD_AVG_LIFESPAN = 1350;
+    public int INITIAL_SPAWN_FOOD_VARIANCE = 1286;
+    public int CARCASS_LIFESPAN = 357;
+    public int MAX_UNDIGESTED_FOOD = 4;
 
     private int nextSpeciesId;
     private int topSpeciesId; //ID for the species with the most creatures
@@ -19,8 +20,10 @@ public class GameData
     private bool initialThreshholdForTopSpeciesLogged;
     private int initialThreshhold = 5;
 
+    public GraphicsDevice GraphicsDevice { get; set; }
     public int GameSeed { get; set; }
     public int SessionID { get; set; }
+    public int TicksPerSecond { get; set; }
     public double TotalElapsedSeconds { get; set; }
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
@@ -67,9 +70,12 @@ public class GameData
     public bool ShowDebugData { get; set; }
     public bool ShowSettingsPanel { get; set; }
     public bool ShowEventLogPanel { get; set; }
+    public Chart GameChart { get; set; }
     public SpriteFont DebugFont { get; set; }
-    public string LockPlants { get; set; }
-    public string LockFood { get; set; }
+    public LockClass LockPlants { get; set; } //Datatype is string only because we need a reference datatype to lock
+    public LockClass LockFood { get; set; } //Datatype is string only because we need a reference datatype to lock
+    public LockClass LockCreatures { get; set; } //Datatype is string only because we need a reference datatype to lock
+    public LockClass LockChart { get; set; } //Datatype is string only because we need a reference datatype to lock
     public bool TickElapsedPlants { get; set; }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
@@ -106,8 +112,10 @@ public class GameData
         topSpeciesId = -1;
         topSpeciesName = String.Empty;
         NumberOfTimesChartDataUpdated = 0;
-        LockFood = String.Empty;
-        LockPlants = String.Empty;
+        LockFood = new LockClass();
+        LockPlants = new LockClass();
+        LockCreatures = new LockClass();
+        LockChart = new LockClass();
         TickElapsedPlants = false;
     }
 
@@ -117,6 +125,7 @@ public class GameData
         MapStatistics.DeadCreatures = DeadCreatures.Count;
         MapStatistics.FoodOnMap = Food.Count;
         MapStatistics.EggsOnMap = Eggs.Count;
+        MapStatistics.PlantsOnMap = Plants.Count;
         MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
         MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
         MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger).Count() / MapStatistics.AliveCreatures, 2);
@@ -173,7 +182,12 @@ public class GameData
 
             List<SpeciesDistinct> newList = new List<SpeciesDistinct>();
             int preXcount = ChartData[ChartData.Count - 1].CountsOverTime.Count;
-            foreach (Creature c in Creatures)
+
+            //Build a deep copy of the array to avoid errors reading the list while creatures are being added/removed
+            List<Creature> deepCopy = new List<Creature>(Creatures.ToArray());
+            List<Egg> deepEggCopy = new List<Egg>(Eggs.ToArray());
+
+            foreach (Creature c in deepCopy)
             {
                 bool found = false;
                 foreach (SpeciesToCount sc in ChartData)
@@ -215,7 +229,8 @@ public class GameData
                 {
                     //Make sure that the species does not have a creature in an egg before removing
                     bool foundInEgg = false;
-                    foreach (Egg e in Eggs)
+
+                    foreach (Egg e in deepEggCopy)
                     {
                         if (e.Creature.SpeciesId == ChartData[i].Id)
                         {

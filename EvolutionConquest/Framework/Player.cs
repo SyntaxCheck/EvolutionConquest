@@ -103,6 +103,7 @@ public class Player
                     gameData.Settings.FoodUpgradeAmount = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.FoodUpgradeAmount).First().CurrentValue;
                     gameData.Settings.MaxFoodLevel = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.MaxFoodlevel).First().CurrentValue;
                     gameData.Settings.StartingCreatureRatio = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.StartingCreatureRatio).First().CurrentValue;
+                    gameData.Settings.StartingPlantRatio = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.StartingPlantRatio).First().CurrentValue;
                     gameData.Settings.EnergyGivenFromFood = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyGivenFromFood).First().CurrentValue;
                     gameData.Settings.EnergyConsumptionFromLayingEgg = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyLossFromLayingEgg).First().CurrentValue;
                     gameData.Settings.EnergyDepletionFromMovement = (int)tabPanel.Tabs[0].Controls.Sliders.Where(t => t.SliderCode == EvolutionConquest.SettingEnum.EnergyDepletionFromMovementRate).First().CurrentValue;

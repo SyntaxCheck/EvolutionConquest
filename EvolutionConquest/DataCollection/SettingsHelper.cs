@@ -91,35 +91,36 @@ public class SettingsHelper
     }
     public static void SetDefaultWorld(ref GameSettings settingsIn)
     {
-        settingsIn.WorldSize = 5000;
+        settingsIn.WorldSize = 4000;
         settingsIn.ClimateHeightPercent = 20;
         settingsIn.StartingFoodRatio = 200f;
-        settingsIn.FoodGenerationValue = 10f;
-        settingsIn.TicksUntilFoodUpgradeStarts = 1800;
-        settingsIn.TicksBetweenFoodUpgrades = 150;
-        settingsIn.StartingPlantRatio = 100f;
-        settingsIn.StartingCreatureRatio = 10f;
+        settingsIn.FoodGenerationValue = 7f;
+        settingsIn.TicksUntilFoodUpgradeStarts = 3547f;
+        settingsIn.TicksBetweenFoodUpgrades = 111f;
+        settingsIn.StartingPlantRatio = 164f;
+        //settingsIn.StartingCreatureRatio = 10f;
+        settingsIn.StartingCreatureRatio = 18f;
         settingsIn.FoodUpgradeAmount = 1;
         settingsIn.FoodUpgradeChancePercent = 20;
         settingsIn.MaxFoodLevel = 50;
-        settingsIn.EnergyGivenFromFood = 100;
-        settingsIn.EnergyConsumptionFromLayingEgg = 50;
-        settingsIn.EnergyDepletionFromMovement = 20f;
-        settingsIn.EnergyDepletionPercentFromComplexity = 90f;
+        settingsIn.EnergyGivenFromFood = 182;
+        settingsIn.EnergyConsumptionFromLayingEgg = 11;
+        settingsIn.EnergyDepletionFromMovement = 11f;
+        settingsIn.EnergyDepletionPercentFromComplexity = 158f;
         settingsIn.CarnivoreLevelBuffer = 5;
     }
     public static void SetDefaultCreature(ref CreatureSettings settingsIn)
     {
-        settingsIn.StartingEggIntervalMin = 40;
-        settingsIn.StartingEggIntervalMax = 50;
-        settingsIn.StartingEggIncubationMin = 40;
-        settingsIn.StartingEggIncubationMax = 80;
-        settingsIn.StartingFoodDigestionMin = 5;
-        settingsIn.StartingFoodDigestionMax = 25;
-        settingsIn.StartingSpeedMin = 5;
-        settingsIn.StartingSpeedMax = 25;
+        settingsIn.StartingEggIntervalMin = 21;
+        settingsIn.StartingEggIntervalMax = 63;
+        settingsIn.StartingEggIncubationMin = 37;
+        settingsIn.StartingEggIncubationMax = 54;
+        settingsIn.StartingFoodDigestionMin = 8;
+        settingsIn.StartingFoodDigestionMax = 14;
+        settingsIn.StartingSpeedMin = 6;
+        settingsIn.StartingSpeedMax = 10;
         settingsIn.StartingLifespanMin = 110;
-        settingsIn.StartingLifespanMax = 140;
+        settingsIn.StartingLifespanMax = 120;
         settingsIn.StartingHerbavoreLevelMin = 1;
         settingsIn.StartingHerbavoreLevelMax = 2;
         settingsIn.StartingCarnivoreLevelMin = 0;
@@ -132,13 +133,13 @@ public class SettingsHelper
         settingsIn.StartingColdToleranceMax = 10;
         settingsIn.StartingHotToleranceMin = 0;
         settingsIn.StartingHotToleranceMax = 10;
-        settingsIn.StartingEnergy = 350;
+        settingsIn.StartingEnergy = 327;
     }
     public static void SetDefaultMutation(ref MutationSettings settingsIn)
     {
         settingsIn.ChanceToIncreaseValue = 60f;
         settingsIn.ChangeAmount = 1f;
-        settingsIn.MutationBonusPercent = 50f;
+        settingsIn.MutationBonusPercent = 87f;
         settingsIn.Attraction = 3f;
         settingsIn.Camo = 3f;
         settingsIn.Carnivore = 5f;

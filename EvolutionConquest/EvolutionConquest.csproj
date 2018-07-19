@@ -52,6 +52,7 @@
     <Compile Include="Framework\CollisionThread.cs" />
     <Compile Include="Framework\Global.cs" />
     <Compile Include="Framework\InputState.cs" />
+    <Compile Include="Framework\LockClass.cs" />
     <Compile Include="Framework\PlantSpreadThread.cs" />
     <Compile Include="Framework\Player.cs" />
     <Compile Include="Framework\StatsThread.cs" />

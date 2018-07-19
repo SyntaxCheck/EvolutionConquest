@@ -44,20 +44,19 @@ public class PlantSpreadThread
 
                         for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
                         {
-                            if(!_gameData.Plants[i].MarkForDelete)
-                            { 
+                            if (!_gameData.Plants[i].MarkForDelete)
+                            {
                                 _gameData.Plants[i].AdvanceTick(_rand);
 
-                                if (_gameData.Plants[i].TicksSinceBirth >= _gameData.Plants[i].Lifespan)
+                                if (_gameData.Plants[i].TicksSinceBirth >= _gameData.Plants[i].LifespanActual)
                                 {
                                     _gameData.Plants[i].MarkForDelete = true;
                                 }
                                 else
                                 {
-                                    //Check if plant can spread
                                     if (TickCount > 10)
                                     {
-                                        TickCount = 0;
+                                        //Check if plant can spread
                                         _gameData.Plants[i].CheckTexture();
 
                                         if (_gameData.Plants[i].SpreadPlant && _gameData.Plants[i].NumberOfSaplings > 0)
@@ -141,6 +140,10 @@ public class PlantSpreadThread
                                     }
                                 }
                             }
+                        }
+                        if (TickCount > 10)
+                        {
+                            TickCount = 0;
                         }
                     }
                 }

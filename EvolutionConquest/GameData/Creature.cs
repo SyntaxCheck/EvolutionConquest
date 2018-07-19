@@ -13,13 +13,28 @@ public class Creature : SpriteBase
     private float _undigestedFood;
     private float _coldClimateTolerance;
     private float _hotClimateTolerance;
+    private bool _isAlive;
+    private float _foodDigestion;
+    private float _lifespan;
+    private float _eggInterval;
 
     /// <summary>
     /// Adding new Properties make sure to Add to the following: Init, LayEgg, IsSameAs, ZeroOutNegativeValues
     /// </summary>
 
     public int CreatureId { get; set; }
-    public bool IsAlive { get; set; }
+    public bool IsAlive
+    {
+        get
+        {
+            return _isAlive;
+        }
+        set
+        {
+            _isAlive = value;
+            DrawObject = value;
+        }
+    }
     public string DeathCause { get; set; }
     public List<string> Ancestors { get; set; } //Chain of Ancestors (Starts blank) 
     public List<int> AncestorIds { get; set; }
@@ -62,7 +77,19 @@ public class Creature : SpriteBase
     } //Food count waiting to be digested
     public float MaxUndigestedFood { get; set; } //Maximum amount of food that can be eaten
     public int DigestedFood { get; set; } //Food count that has been digested
-    public float FoodDigestion { get; set; } //How quickly food can be digested and converted into an egg, Also the longer it takes the more Energy the food will give
+    public float FoodDigestion
+    {
+        get
+        {
+            return _foodDigestion;
+        }
+        set
+        {
+            _foodDigestion = value;
+            FoodDigestionActual = _foodDigestion / (30 / TicksPerSecond);
+        }
+    } //How quickly food can be digested and converted into an egg, Also the longer it takes the more Energy the food will give
+    public float FoodDigestionActual { get; set; } //Adjusted food digestion based on games ticks per second
     public float FoodTypeBlue { get; set; } //Food Type blue level, if this is higher than Red or Green then the creature can only eat this type
     public float FoodTypeRed { get; set; } //Food Type red level, if this is higher than Blue or Green then the creature can only eat this type
     public float FoodTypeGreen { get; set; } //Food Type green level, if this is higher than Red or Blue then the creature can only eat this type
@@ -110,7 +137,19 @@ public class Creature : SpriteBase
     public int TotalFoodEaten { get; set; } //Statistical count of how many food were eaten
     public int TicksSinceLastEgg { get; set; } //The amount of Game Ticks since the last egg was created
     public int TicksSinceLastDigestedFood { get; set; } //The amount of Game Ticks since the last food was digested
-    public float EggInterval { get; set; } //How ofter an egg can be output
+    public float EggInterval
+    {
+        get
+        {
+            return _eggInterval;
+        }
+        set
+        {
+            _eggInterval = value;
+            EggIntervalActual = _eggInterval / (30 / TicksPerSecond);
+        }
+    } //How often an egg can be output
+    public float EggIntervalActual { get; set; } //How often an egg can be output adjusted for current tick rate
     public float EggIncubation { get; set; } //How long it takes for the egg to hatch once created
     public float EggIncubationActual { get; set; } //This is calculated based on their species level, if the creature is a herbavore add Herbavore * 10
     public float EggCamo { get; set; } //How well the egg is hidden from Scavengers
@@ -121,7 +160,19 @@ public class Creature : SpriteBase
     public float Speed { get; set; } //How quickly the creature moved through the world
     public float PathDeviationAmount { get; set; } //How much to deviate from current path heading to simulate wandering
     public float PathDeviationFrequency { get; set; } //How often to deviate from the current path heading
-    public float Lifespan { get; set; } //How long the creature lives
+    public float Lifespan
+    {
+        get
+        {
+            return _lifespan;
+        }
+        set
+        {
+            _lifespan = value;
+            LifespanActual = _lifespan / (30 / TicksPerSecond);
+        }
+    } //How long the creature lives
+    public float LifespanActual { get; set; } //How long the creature lives adjusted by the current tick rate
     public float Energy { get; set; } //Energy is spent by moving and earned by eating
     public float ElapsedTicks { get; set; } //How many ticks the creature has been alive
     public float Sight { get; set; } //Allows the creature to adjust path if target is within this many units
@@ -175,7 +226,6 @@ public class Creature : SpriteBase
 
     public const string CREATURE_TABLE_NAME = "Creatures";
     public const string ANCESTORS_TABLE_NAME = "Ancestors";
-    public const int TICKS_BETWEEN_SIGHT_EVAL = 15;
     public const float EGG_CAMO_COST_MULTIPLIER = 10f; //Multiplier on the energy cost for laying the egg
 
     //public const string CREATURE_TABLE_NAME = "Creatures";
@@ -213,6 +263,7 @@ public class Creature : SpriteBase
     {
         creatureIdCtr++;
         CreatureId = creatureIdCtr;
+        TicksPerSecond = gameData.TicksPerSecond;
         IsAlive = true;
         IsChangingSpecies = false;
         NewSpeciesName = String.Empty;
@@ -241,7 +292,7 @@ public class Creature : SpriteBase
         ElapsedTicks = 0;
         Sight = 0;
         TicksSinceLastVisionCheck = 0;
-        TicksBetweenVisionChecks = TICKS_BETWEEN_SIGHT_EVAL;
+        TicksBetweenVisionChecks = (int)Math.Ceiling(TicksPerSecond / 2.0);
         Attraction = 0;
         Herbavore = rand.Next((int)gameData.CreatureSettings.StartingHerbavoreLevelMin, (int)gameData.CreatureSettings.StartingHerbavoreLevelMax);
         Carnivore = rand.Next((int)gameData.CreatureSettings.StartingCarnivoreLevelMin, (int)gameData.CreatureSettings.StartingCarnivoreLevelMax);
@@ -303,7 +354,7 @@ public class Creature : SpriteBase
         if (UndigestedFood >= 1) //only allow digestion once a food has been eaten
             TicksSinceLastDigestedFood++;
 
-        if (UndigestedFood >= 1 && TicksSinceLastDigestedFood >= FoodDigestion)
+        if (UndigestedFood >= 1 && TicksSinceLastDigestedFood >= FoodDigestionActual)
         {
             TicksSinceLastDigestedFood = 0;
             UndigestedFood--;
@@ -320,7 +371,7 @@ public class Creature : SpriteBase
         if (IsInHot)
             TicksInHotClimate++;
 
-        if (IsInCold && !IsLeavingClimate && TicksInColdClimate / 30.0 > ColdClimateTolerance)
+        if (IsInCold && !IsLeavingClimate && TicksInColdClimate / TicksPerSecond > ColdClimateTolerance)
         {
             //Move straight down to get out of the cold climate
             int tmpRotation;
@@ -328,7 +379,7 @@ public class Creature : SpriteBase
             Rotation = MathHelper.ToRadians(tmpRotation);
             IsLeavingClimate = true;
         }
-        else if (IsInHot && !IsLeavingClimate && TicksInHotClimate / 30.0 > HotClimateTolerance)
+        else if (IsInHot && !IsLeavingClimate && TicksInHotClimate / TicksPerSecond > HotClimateTolerance)
         {
             //Move straight up to get out of the hot climate
             int tmpRotation;
@@ -417,6 +468,7 @@ public class Creature : SpriteBase
         baby.AncestorIds = CopyAncestorIdsList(AncestorIds);
         baby.IsAlive = true;
         baby.WorldSize = WorldSize;
+        baby.TicksPerSecond = TicksPerSecond;
         baby.ClimateHeightPercent = ClimateHeightPercent;
         baby.IsChangingSpecies = false;
         baby.NewSpeciesId = -1;
@@ -537,7 +589,7 @@ public class Creature : SpriteBase
         egg.ClimateHeightPercent = ClimateHeightPercent;
         egg.Position = Position;
         egg.ElapsedTicks = 0;
-        egg.TicksTillHatched = (int)Math.Ceiling(EggIncubationActual);
+        egg.TicksTillHatched = (int)Math.Ceiling(EggIncubationActual) / (30 / TicksPerSecond);
         egg.Camo = EggCamo;
         egg.Creature = baby;
 
@@ -578,13 +630,13 @@ public class Creature : SpriteBase
         }
         info.Add("Generation: " + Generation);
         info.Add("Lifespan: " + Math.Round(Lifespan / 10.0, 1).ToString());
-        info.Add("Age: " + Math.Round(ElapsedTicks / 10.0, 1).ToString());
+        info.Add("Age: " + Math.Round((ElapsedTicks / 10.0) * (30 / TicksPerSecond), 1).ToString());
         info.Add("Energy: " + Energy);
         info.Add(" ");
         info.Add("Food Type: " + FoodType);
         info.Add("Food: " + UndigestedFood);
         info.Add("Food Digested: " + DigestedFood);
-        info.Add("Last Digested: " + Math.Round(TicksSinceLastDigestedFood / 10.0, 1).ToString());
+        info.Add("Last Digested: " + Math.Round((TicksSinceLastDigestedFood / 10.0) * (30 / TicksPerSecond), 1).ToString());
         info.Add("Food Digestion Rate: " + Math.Round(FoodDigestion / 10.0, 1).ToString());
         info.Add("Lifetime Food: " + TotalFoodEaten);
         info.Add(" ");
@@ -593,7 +645,7 @@ public class Creature : SpriteBase
         info.Add("Egg Incubation Actual: " + Math.Round(EggIncubationActual / 10.0, 1).ToString());
         info.Add("Egg Camo: " + EggCamo);
         info.Add("Egg Toxicity: " + EggToxicity);
-        info.Add("Last Egg: " + Math.Round(TicksSinceLastEgg / 10.0, 1).ToString());
+        info.Add("Last Egg: " + Math.Round((TicksSinceLastEgg / 10.0) * (30 / TicksPerSecond), 1).ToString());
         info.Add("Eggs Created: " + EggsCreated);
         info.Add(" ");
         info.Add("Herbavore: " + Herbavore);

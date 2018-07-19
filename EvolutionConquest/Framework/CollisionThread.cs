@@ -28,32 +28,36 @@ public class CollisionThread
         {
             try
             {
-                for (int i = 0; i < _gameData.Creatures.Count; i++)
+                _gameData.LockCreatures.Locker = "CollisionThread";
+                lock (_gameData.LockCreatures)
                 {
-                    if (_gameData.Creatures[i].IsAlive)
+                    for (int i = 0; i < _gameData.Creatures.Count; i++)
                     {
-                        //Food collision
-                        if ((_gameData.Creatures[i].IsHerbavore || _gameData.Creatures[i].IsScavenger) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
+                        if (_gameData.Creatures[i].IsAlive)
                         {
-                            foreach (Point p in _gameData.Creatures[i].GridPositions)
+                            //Food collision
+                            if ((_gameData.Creatures[i].IsHerbavore || _gameData.Creatures[i].IsScavenger) && _gameData.Creatures[i].UndigestedFood < _gameData.MaxCreatureUndigestedFood)
                             {
-                                lock (_gameData.LockFood)
+                                foreach (Point p in _gameData.Creatures[i].GridPositions)
                                 {
-                                    for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
+                                    lock (_gameData.LockFood)
                                     {
-                                        if (!_gameData.MapGridData[p.X, p.Y].Food[k].MarkedForDelete)
+                                        for (int k = (_gameData.MapGridData[p.X, p.Y].Food.Count - 1); k >= 0; k--)
                                         {
-                                            if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && (_gameData.Creatures[i].IsScavenger || _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength))
+                                            if (!_gameData.MapGridData[p.X, p.Y].Food[k].MarkForDelete)
                                             {
-                                                if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                                                if (_gameData.Creatures[i].FoodTypeInt == _gameData.MapGridData[p.X, p.Y].Food[k].FoodType && (_gameData.Creatures[i].IsScavenger || _gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Food[k].FoodStrength))
                                                 {
-                                                    Food tmpFood = _gameData.MapGridData[p.X, p.Y].Food[k];
-                                                    _gameData.Creatures[i].UndigestedFood++;
-                                                    _gameData.Creatures[i].TotalFoodEaten++;
-                                                    _gameData.Creatures[i].Energy += _gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
-                                                    tmpFood.MarkedForDelete = true;
-                                                    //_gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
-                                                    //_gameData.Food.Remove(tmpFood);
+                                                    if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Food[k].Bounds))
+                                                    {
+                                                        _gameData.Creatures[i].UndigestedFood++;
+                                                        _gameData.Creatures[i].TotalFoodEaten++;
+                                                        _gameData.Creatures[i].Energy += _gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10); //Slower food digestion means you pull more energy from the food
+                                                        _gameData.MapGridData[p.X, p.Y].Food[k].MarkForDelete = true;
+                                                        //_gameData.Food.Where(t => t == _gameData.MapGridData[p.X, p.Y].Food[k]).First().MarkForDelete = true;
+                                                        //_gameData.RemoveFoodFromGrid(tmpFood, _gameData.MapGridData[p.X, p.Y].Food[k].GridPositions);
+                                                        //_gameData.Food.Remove(tmpFood);
+                                                    }
                                                 }
                                             }
                                         }
@@ -69,6 +73,8 @@ public class CollisionThread
                             {
                                 lock (_gameData.LockPlants)
                                 {
+                                    //Temp creature lock to wait for creature cleanup to finish before we process collisions. This code is not important enough to retain a full lock
+                                    lock (_gameData.LockCreatures) { }
                                     for (int k = (_gameData.MapGridData[p.X, p.Y].Plants.Count - 1); k >= 0; k--)
                                     {
                                         if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)
@@ -93,17 +99,22 @@ public class CollisionThread
                                 }
                             }
                         }
-                    }
 
-                    UpdateCreatureSight(i);
+                        try
+                        {
+                            UpdateCreatureSight(i);
+                        }
+                        catch (Exception) { } //Ignore this error, if the creature list updates during vision checks then we just don't get to change targets this iteration
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.IO.File.AppendAllText(System.IO.Path.Combine(_gameData.SessionID.ToString(), "ErrorLogCollisionThread.txt"), DateTime.Now.ToString() + " - Collision Thread Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(_gameData.SessionID.ToString(), "ErrorLogCollisionThread.txt"), Environment.NewLine + DateTime.Now.ToString() + " - Collision Thread Uncaught error: " + ex.Message + Environment.NewLine + "Stacktrace: " + ex.StackTrace);
             }
+            _gameData.LockCreatures.Locker = "";
 
-            Thread.Sleep(33);
+            Thread.Sleep(33); //We do not want to rapidly loop this code since it will slow down the main thread while we hold locks
         }
     }
     private void UpdateCreatureSight(int creatureIndex)
@@ -281,7 +292,7 @@ public class CollisionThread
             {
                 foreach (Food f in _gameData.MapGridData[gridPositions[k].X, gridPositions[k].Y].Food)
                 {
-                    if (!f.MarkedForDelete && f.FoodType == creature.FoodTypeInt && f.FoodStrength <= creature.Herbavore)
+                    if (!f.MarkForDelete && f.FoodType == creature.FoodTypeInt && f.FoodStrength <= creature.Herbavore)
                     {
                         float tmpDistance = Vector2.Distance(creature.Position, f.Position);
                         if (tmpDistance <= creature.Sight + creature.TextureCollideDistance) //We are not dividing the TextureCollisionDistance by 2 to give the creature an initial sight boost
