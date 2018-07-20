@@ -293,28 +293,31 @@ public class Camera
             }
             else
             {
-                if (gameData.FocusIndex > gameData.Creatures.Count - 1)
+                do
                 {
-                    gameData.FocusIndex = gameData.Creatures.Count - 1;
-                }
-
-                if (gameData.Focus != null && gameData.FocusIndex >= 0)
-                {
-                    if (gameData.FocusIndex == 0)
+                    if (gameData.FocusIndex > gameData.Creatures.Count - 1)
                     {
                         gameData.FocusIndex = gameData.Creatures.Count - 1;
                     }
+
+                    if (gameData.Focus != null && gameData.FocusIndex >= 0)
+                    {
+                        if (gameData.FocusIndex == 0)
+                        {
+                            gameData.FocusIndex = gameData.Creatures.Count - 1;
+                        }
+                        else
+                        {
+                            gameData.FocusIndex--;
+                        }
+                        gameData.Focus = gameData.Creatures[gameData.FocusIndex];
+                    }
                     else
                     {
-                        gameData.FocusIndex--;
+                        gameData.FocusIndex = 0;
+                        gameData.Focus = gameData.Creatures[gameData.FocusIndex];
                     }
-                    gameData.Focus = gameData.Creatures[gameData.FocusIndex];
-                }
-                else
-                {
-                    gameData.FocusIndex = 0;
-                    gameData.Focus = gameData.Creatures[gameData.FocusIndex];
-                }
+                } while (!gameData.Creatures[gameData.FocusIndex].IsAlive);
             }
         }
         else if (inputState.IsNewKeyPress(Keys.PageUp, controllingPlayer, out playerIndex))
@@ -397,29 +400,32 @@ public class Camera
             }
             else
             {
-                if (gameData.FocusIndex > gameData.Creatures.Count - 1)
+                do
                 {
-                    gameData.FocusIndex = gameData.Creatures.Count - 1;
-                }
-
-                if (gameData.Focus != null && gameData.FocusIndex >= 0)
-                {
-                    if (gameData.FocusIndex == gameData.Creatures.Count - 1)
+                    if (gameData.FocusIndex > gameData.Creatures.Count - 1)
                     {
-                        gameData.FocusIndex = 0;
+                        gameData.FocusIndex = gameData.Creatures.Count - 1;
+                    }
+
+                    if (gameData.Focus != null && gameData.FocusIndex >= 0)
+                    {
+                        if (gameData.FocusIndex == gameData.Creatures.Count - 1)
+                        {
+                            gameData.FocusIndex = 0;
+                        }
+                        else
+                        {
+                            gameData.FocusIndex++;
+                        }
+                        gameData.Focus = gameData.Creatures[gameData.FocusIndex];
                     }
                     else
                     {
-                        gameData.FocusIndex++;
+                        gameData.FocusIndex = 0;
+                        gameData.Focus = gameData.Creatures[gameData.FocusIndex];
                     }
-                    gameData.Focus = gameData.Creatures[gameData.FocusIndex];
-                }
-                else
-                {
-                    gameData.FocusIndex = 0;
-                    gameData.Focus = gameData.Creatures[gameData.FocusIndex];
-                }
-            }
+                } while (!gameData.Creatures[gameData.FocusIndex].IsAlive) ;
+        }
         }
         else if (inputState.IsNewKeyPress(Keys.H, controllingPlayer, out playerIndex)) //Focus on top Herbavore
         {

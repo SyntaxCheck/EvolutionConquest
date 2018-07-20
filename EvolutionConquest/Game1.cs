@@ -76,7 +76,7 @@ namespace EvolutionConquest
         private CarcassShapeGenerator _carcassGenerator;
         private Names _names;
         private Borders _borders;
-        private Chart _chart;
+        //private Chart _chart;
         private List<string> _controlsListText;
         private List<TextureContainer> _textureList;
         private double _elapsedSecondsSinceTick;
@@ -89,6 +89,7 @@ namespace EvolutionConquest
         private int _elapsedTicksSinceFoodUpgrade;
         private int _climateHeight;
         private bool _writeStats;
+        private bool _chartPosSet;
         private float _foodGenerationIntervalSeconds;
         private float _foodLifeSpan;
         private TimeSpan _totalElapsedTime;
@@ -126,6 +127,7 @@ namespace EvolutionConquest
 
             _resetTimeSpan = new TimeSpan(); //This must be initialized outside of the InitVariables function so that it doest not get reset
             _writeStats = true;
+            _chartPosSet = false;
 
             IsMouseVisible = true;
 
@@ -167,6 +169,7 @@ namespace EvolutionConquest
             _gameData.MutationSettings = SettingsHelper.ReadMutationSettings("MutationSettings.json");
             _gameData.MaxCreatureUndigestedFood = _gameData.MAX_UNDIGESTED_FOOD;
             _gameData.TicksPerSecond = (int)TICKS_PER_SECOND;
+            _gameData.SetNewBestRun(); //Initialize the best run settings
 
             // Create a new SpriteBatch, which can be used to draw textures.
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -282,12 +285,12 @@ namespace EvolutionConquest
             //Spawn in fast despawning food
             for (int i = 0; i < amountOfFood; i++)
             {
-                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10) / (30 / _gameData.TicksPerSecond), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10)) / (30 / _gameData.TicksPerSecond));
+                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10)));
             }
             //Spawn in medium despawning food
             for (int i = 0; i < amountOfFood; i++)
             {
-                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4) / (30 / _gameData.TicksPerSecond), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4)) / (30 / _gameData.TicksPerSecond));
+                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4)));
             }
             //Spawn in food that does not despawn
             for (int i = 0; i < amountOfFood / 2; i++)
@@ -311,8 +314,10 @@ namespace EvolutionConquest
             }
 
             //Calculate the food spawn speed
-            _foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
-            _foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
+            //_foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
+            _foodGenerationIntervalSeconds = 10000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
+            _foodLifeSpan = 9000f + (_gameData.Settings.FoodGenerationValue * 100f);
+            //_foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
 
             //Generate initial Map stats so that the stats do not read all 0's at the beginning
             _gameData.CalculateMapStatistics();
@@ -443,6 +448,7 @@ namespace EvolutionConquest
                 }
 
                 _totalElapsedTime = (gameTime.TotalGameTime - _resetTimeSpan);
+                _gameData.ElapsedTimeSinceFitnessCalculation += gameTime.ElapsedGameTime.TotalSeconds;
 
                 DateTime debugDttm = DateTime.Now;
                 UpdateHandleInputs(gameTime);
@@ -725,84 +731,96 @@ namespace EvolutionConquest
             UpdateOffTickHandleCollisionsAndMovement(gameTime);
             _debugTimer.TimeUpdateOffTickHandleCollisionsAndMovement += (DateTime.Now - debugDttm).TotalMilliseconds;
 
-            //Every second interval processing only when it is not a TICK. Graph only needs to be updated once every X seconds
-            if (_elapsedTicksSinceSecondProcessing >= TICKS_PER_SECOND * 20)
+            //Every second interval processing only when it is not a TICK. Some calcs only needs to be updated once every X seconds
+            if (_elapsedTicksSinceSecondProcessing >= TICKS_PER_SECOND * 5)
             {
                 debugDttm = DateTime.Now;
                 UpdateOffTickInterval(gameTime);
                 _debugTimer.TimeUpdateOffTickInterval += (DateTime.Now - debugDttm).TotalMilliseconds;
             }
 
-            //Display chart logic here as well so that we do not need to wait 5 seconds
-            if (_gameData.ChartDataTop.Count > 0 && !_gameData.ShowSettingsPanel)
+            if (_gameData.ElapsedTimeSinceFitnessCalculation >= GameData.SECONDS_BETWEEN_FITNESS_CALC)
             {
-                _chart.Visible = _gameData.ShowChart;
+                double fitnessScore = CalculateFitness();
+
+                _gameData.ElapsedTimeSinceFitnessCalculation -= GameData.SECONDS_BETWEEN_FITNESS_CALC;
+                _gameData.TotalFitnessPoints += fitnessScore;
+                _gameData.NumberOfFitnessCalculations++;
             }
         }
         private void UpdateOffTickInterval(GameTime gameTime)
         {
             _elapsedTicksSinceSecondProcessing = 0;
 
-            UpdateOffTickIntervalGraphs(gameTime);
+            if (!_chartPosSet)
+            {
+                UpdateOffTickIntervalGraphs(gameTime);
+            }
             UpdateOffTickIntervalMapStats(gameTime);
             UpdateOffTickIntervalObjectCleanup(gameTime);
         }
         private void UpdateOffTickIntervalGraphs(GameTime gameTime)
         {
+            if (_gameData.ChartDataTop.Count > 0 && _gameData.ChartTexture != null && _graphics.PreferredBackBufferWidth > 0)
+            {
+                _gameData.ChartPosition = new Point(_graphics.PreferredBackBufferWidth - _gameData.ChartTexture.Width - 2, _graphics.PreferredBackBufferHeight - _gameData.ChartTexture.Height - 2);
+                _chartPosSet = true;
+            }
+
             //Generate Graph data
             //Moved to Stats thread
             //_gameData.CalculateChartData(_rand); //This will populat the Chart Data in _gameData. Even if we hide the chart we need to keep track of ChartData
 
-            if (_gameData.ShowChart)
-            {
-                _gameData.LockChart.Locker = "Main";
-                lock (_gameData.LockChart)
-                {
-                    if (!_chart.Visible && _gameData.ChartDataTop.Count > 0 && !_gameData.ShowSettingsPanel)
-                    {
-                        _chart.Visible = true;
-                    }
-                    if (_chart.Series != null)
-                    {
-                        _chart.Series.Clear();
-                        for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
-                        {
-                            int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
-                            string name = String.Empty;
-                            //System.Drawing.Color seriesColor = System.Drawing.Color.White;
+            //if (_gameData.ShowChart)
+            //{
+            //    _gameData.LockChart.Locker = "Main";
+            //    lock (_gameData.LockChart)
+            //    {
+            //        if (!_chart.Visible && _gameData.ChartDataTop.Count > 0 && !_gameData.ShowSettingsPanel)
+            //        {
+            //            _chart.Visible = true;
+            //        }
+            //        if (_chart.Series != null)
+            //        {
+            //            _chart.Series.Clear();
+            //            for (int i = 0; i < _gameData.ChartDataTop.Count; i++)
+            //            {
+            //                int? count = _gameData.ChartDataTop[i].CountsOverTime[_gameData.ChartDataTop[i].CountsOverTime.Count - 1];
+            //                string name = String.Empty;
+            //                //System.Drawing.Color seriesColor = System.Drawing.Color.White;
 
-                            name = _gameData.ChartDataTop[i].Name;
+            //                name = _gameData.ChartDataTop[i].Name;
 
-                            if (name.Length > 15)
-                                name = name.Substring(0, 12) + "...";
+            //                if (name.Length > 15)
+            //                    name = name.Substring(0, 12) + "...";
 
-                            if (count != null)
-                            {
-                                name += "(" + count + ")";
-                            }
-                            if (!String.IsNullOrEmpty(_gameData.ChartDataTop[i].CreatureType))
-                            {
-                                name = "(" + _gameData.ChartDataTop[i].CreatureType.Substring(0, 1) + ")" + name;
-                            }
+            //                if (count != null)
+            //                {
+            //                    name += "(" + count + ")";
+            //                }
+            //                if (!String.IsNullOrEmpty(_gameData.ChartDataTop[i].CreatureType))
+            //                {
+            //                    name = "(" + _gameData.ChartDataTop[i].CreatureType.Substring(0, 1) + ")" + name;
+            //                }
 
-                            _chart.Series.Add(name);
-                            _chart.Series[name].XValueType = ChartValueType.Int32;
-                            _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
-                            _chart.Series[name].BorderWidth = 3;
-                            if (_gameData.ChartDataTop[i].ChartColor != System.Drawing.Color.White)
-                            {
-                                _chart.Series[name].Color = _gameData.ChartDataTop[i].ChartColor;
-                            }
+            //                _chart.Series.Add(name);
+            //                _chart.Series[name].XValueType = ChartValueType.Int32;
+            //                _chart.Series[name].ChartType = SeriesChartType.StackedArea100;
+            //                _chart.Series[name].BorderWidth = 3;
+            //                if (_gameData.ChartDataTop[i].ChartColor != System.Drawing.Color.White)
+            //                {
+            //                    _chart.Series[name].Color = _gameData.ChartDataTop[i].ChartColor;
+            //                }
 
-                            for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
-                            {
-                                _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
-                            }
-                        }
-                    }
-                }
-                _gameData.LockChart.Locker = "";
-            }
+            //                for (int k = 0; k < _gameData.ChartDataTop[i].CountsOverTime.Count; k++)
+            //                {
+            //                    _chart.Series[name].Points.AddXY(k, _gameData.ChartDataTop[i].CountsOverTime[k]);
+            //                }
+            //            }
+            //        }
+            //    }
+            //    _gameData.LockChart.Locker = "";
+            //}
         }
         private void UpdateOffTickIntervalMapStats(GameTime gameTime)
         {
@@ -1078,20 +1096,20 @@ namespace EvolutionConquest
                 _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData, _settingsTabPanel);
                 Global.Camera.HandleInput(_inputState, PlayerIndex.One, ref _gameData);
 
-                if (_gameData.ShowChart)
-                {
-                    if (_gameData.ChartDataTop.Count > 0)
-                    {
-                        if (_gameData.ShowSettingsPanel)
-                        {
-                            _chart.Visible = false;
-                        }
-                        else
-                        {
-                            _chart.Visible = true;
-                        }
-                    }
-                }
+                //if (_gameData.ShowChart)
+                //{
+                //    if (_gameData.ChartDataTop.Count > 0)
+                //    {
+                //        if (_gameData.ShowSettingsPanel)
+                //        {
+                //            _chart.Visible = false;
+                //        }
+                //        else
+                //        {
+                //            _chart.Visible = true;
+                //        }
+                //    }
+                //}
             }
         }
         private void UpdateHandleEndOfSimulation(GameTime gameTime)
@@ -1642,11 +1660,12 @@ namespace EvolutionConquest
         }
         private void DrawChartBorder()
         {
-            if (!_gameData.ShowSettingsPanel && _gameData.ShowChart && _gameData.ChartDataTop.Count > 0)
+            if (_chartPosSet && !_gameData.ShowSettingsPanel && _gameData.ShowChart && _gameData.ChartDataTop.Count > 0 && _gameData.ChartTexture != null && _gameData.ChartPosition != null)
             {
                 int borderDepth = 2;
 
-                _spriteBatch.Draw(_whitePixel, new Rectangle(_chart.Location.X - borderDepth, _chart.Location.Y - borderDepth, _chart.Width + (borderDepth * 2), _chart.Height + (borderDepth * 2)), Color.Black);
+                _spriteBatch.Draw(_whitePixel, new Rectangle(_gameData.ChartPosition.X - borderDepth, _gameData.ChartPosition.Y - borderDepth, _gameData.ChartTexture.Width + (borderDepth * 2), _gameData.ChartTexture.Height + (borderDepth * 2)), Color.Black);
+                _spriteBatch.Draw(_gameData.ChartTexture, new Vector2(_gameData.ChartPosition.X, _gameData.ChartPosition.Y), null, Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 1);
             }
         }
         private void DrawSettingsPanel()
@@ -1941,16 +1960,30 @@ namespace EvolutionConquest
         private void ResetGame(GameTime gameTime)
         {
             _resetTimeSpan = gameTime.TotalGameTime;
-            Control.FromHandle(Window.Handle).Controls.Remove(_chart);
             LoadContent();
 
             if (ENABLE_GAME_RESETS)
             {
+                //Check to see if we calculated a better fitness score compared to the current best
+                if (_gameData.CurrentFitnessScore > _gameData.BestRunSettings.FitnessScore)
+                {
+                    _gameData.SetNewBestRun();
+                }
+
+                //Reset all the values back to the current best run values before randomizing
+                _gameData.Settings = _gameData.BestRunSettings.Settings;
+                _gameData.CreatureSettings = _gameData.BestRunSettings.CreatureSettings;
+                _gameData.MutationSettings = _gameData.BestRunSettings.MutationSettings;
+                _gameData.CARCASS_LIFESPAN = _gameData.BestRunSettings.CARCASS_LIFESPAN;
+                _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN = _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_AVG_LIFESPAN;
+                _gameData.INITIAL_SPAWN_FOOD_VARIANCE = _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_VARIANCE;
+                _gameData.MAX_UNDIGESTED_FOOD = _gameData.BestRunSettings.MAX_UNDIGESTED_FOOD;
+
                 float lowEndVal = 0.1f;
                 float highEndVal = 2f;
 
                 //Randomize the settings file
-                _gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
+                //_gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
                 _gameData.Settings.TicksUntilFoodUpgradeStarts = _rand.Next((int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * lowEndVal), (int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * highEndVal));
                 _gameData.Settings.TicksBetweenFoodUpgrades = _rand.Next((int)(_gameData.Settings.TicksBetweenFoodUpgrades * lowEndVal), (int)(_gameData.Settings.TicksBetweenFoodUpgrades * highEndVal));
                 _gameData.Settings.StartingPlantRatio = _rand.Next((int)(_gameData.Settings.StartingPlantRatio * lowEndVal), (int)(_gameData.Settings.StartingPlantRatio * highEndVal));
@@ -3409,6 +3442,7 @@ namespace EvolutionConquest
             List<string> builtList = new List<string>();
 
             builtList.Add("Statistic,Value");
+            builtList.Add("Fitness Score," + _gameData.CurrentFitnessScore);
             builtList.Add("Alive Creatures," + _gameData.MapStatistics.AliveCreatures.ToString());
             builtList.Add("Dead Creatures," + _gameData.MapStatistics.DeadCreatures.ToString());
             builtList.Add("Eggs On Map," + _gameData.MapStatistics.EggsOnMap.ToString());
@@ -3615,19 +3649,34 @@ namespace EvolutionConquest
                 return _herbavoreTexture;
             }
         }
-        private float CalculateFitness()
+        private double CalculateFitness()
         {
-            float score = 0f;
+            double score = 0d;
 
-            float carnivorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentCarnivore);
-            float herbavorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentHerbavore);
-            float scavengerPointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentScavenger);
-            float omnivorePointsFromPerfect = Math.Abs(25f - (float)_gameData.MapStatistics.PercentOmnivore);
+            double carnivorePointsFromPerfect = Math.Abs(10d - _gameData.MapStatistics.PercentCarnivore);
+            double herbavorePointsFromPerfect = Math.Abs(70d - _gameData.MapStatistics.PercentHerbavore);
+            double scavengerPointsFromPerfect = Math.Abs(15d - _gameData.MapStatistics.PercentScavenger);
+            double omnivorePointsFromPerfect = Math.Abs(5d - _gameData.MapStatistics.PercentOmnivore);
+            double creatureCountFromPerfect = Math.Abs(1000d - _gameData.MapStatistics.AliveCreatures);
 
-            score += 100f - carnivorePointsFromPerfect;
-            score += 100f - herbavorePointsFromPerfect;
-            score += 100f - scavengerPointsFromPerfect;
-            score += 100f - omnivorePointsFromPerfect;
+            if (creatureCountFromPerfect > 100d)
+                creatureCountFromPerfect = 100d;
+
+            if (carnivorePointsFromPerfect > 0)
+                score += 100d - carnivorePointsFromPerfect;
+            if(herbavorePointsFromPerfect > 0)
+                score += 100d - herbavorePointsFromPerfect;
+            if(scavengerPointsFromPerfect > 0)
+                score += 100d - scavengerPointsFromPerfect;
+            if(omnivorePointsFromPerfect > 0)
+                score += 100d - omnivorePointsFromPerfect;
+
+            score += 100d - creatureCountFromPerfect;
+
+            if (_fps < 30)
+            {
+                score -= 100;
+            }
 
             return score;
         }

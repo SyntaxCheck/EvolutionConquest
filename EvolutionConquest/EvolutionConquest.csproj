@@ -24,6 +24,7 @@
     <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -47,6 +48,7 @@
     <Compile Include="DataCollection\JsonHelper.cs" />
     <Compile Include="DataCollection\MutationSettings.cs" />
     <Compile Include="DataCollection\SettingsHelper.cs" />
+    <Compile Include="Framework\BestRunSettingsContainer.cs" />
     <Compile Include="Framework\Camera.cs" />
     <Compile Include="Framework\CollisionDetection.cs" />
     <Compile Include="Framework\CollisionThread.cs" />

@@ -7,6 +7,7 @@ using System.Windows.Forms.DataVisualization.Charting;
 
 public class GameData
 {
+    public const int SECONDS_BETWEEN_FITNESS_CALC = 60;
     //Should be changed back to constants once we have finished balance analysis
     public int INITIAL_SPAWN_FOOD_AVG_LIFESPAN = 1350;
     public int INITIAL_SPAWN_FOOD_VARIANCE = 1286;
@@ -28,6 +29,7 @@ public class GameData
     public GameSettings Settings { get; set; }
     public CreatureSettings CreatureSettings { get; set; }
     public MutationSettings MutationSettings { get; set; }
+    public BestRunSettingsContainer BestRunSettings { get; set; }
     public MapStatistics MapStatistics { get; set; } //Map stats for the top bar on the HUD
     public List<Creature> Creatures { get; set; } //List of creatures on the map
     public List<Creature> DeadCreatures { get; set; } //Used for writing stats at the end
@@ -71,17 +73,30 @@ public class GameData
     public bool ShowSettingsPanel { get; set; }
     public bool ShowEventLogPanel { get; set; }
     public Chart GameChart { get; set; }
+    public Texture2D ChartTexture { get; set; }
+    public Point ChartPosition { get; set; }
     public SpriteFont DebugFont { get; set; }
     public LockClass LockPlants { get; set; } //Datatype is string only because we need a reference datatype to lock
     public LockClass LockFood { get; set; } //Datatype is string only because we need a reference datatype to lock
     public LockClass LockCreatures { get; set; } //Datatype is string only because we need a reference datatype to lock
     public LockClass LockChart { get; set; } //Datatype is string only because we need a reference datatype to lock
     public bool TickElapsedPlants { get; set; }
+    public double TotalFitnessPoints { get; set; }
+    public int NumberOfFitnessCalculations { get; set; }
+    public double ElapsedTimeSinceFitnessCalculation { get; set; }
+    public double CurrentFitnessScore
+    {
+        get
+        {
+            return Math.Round(TotalFitnessPoints / NumberOfFitnessCalculations, 2);
+        }
+    }
 
     private const int CREATURES_COUNT_FOR_CHART = 15;
 
     public GameData()
     {
+        BestRunSettings = new BestRunSettingsContainer();
         MapStatistics = new MapStatistics();
         ChartData = new List<SpeciesToCount>();
         ChartDataTop = new List<SpeciesToCount>();
@@ -112,6 +127,8 @@ public class GameData
         topSpeciesId = -1;
         topSpeciesName = String.Empty;
         NumberOfTimesChartDataUpdated = 0;
+        TotalFitnessPoints = 0;
+        NumberOfFitnessCalculations = 0;
         LockFood = new LockClass();
         LockPlants = new LockClass();
         LockCreatures = new LockClass();
@@ -412,5 +429,16 @@ public class GameData
                 EventLog.RemoveAt(0);
             }
         }
+    }
+    public void SetNewBestRun()
+    {
+        BestRunSettings.FitnessScore = CurrentFitnessScore;
+        BestRunSettings.Settings = Settings;
+        BestRunSettings.CreatureSettings = CreatureSettings;
+        BestRunSettings.MutationSettings = MutationSettings;
+        BestRunSettings.MAX_UNDIGESTED_FOOD = MAX_UNDIGESTED_FOOD;
+        BestRunSettings.CARCASS_LIFESPAN = CARCASS_LIFESPAN;
+        BestRunSettings.INITIAL_SPAWN_FOOD_AVG_LIFESPAN = INITIAL_SPAWN_FOOD_AVG_LIFESPAN;
+        BestRunSettings.INITIAL_SPAWN_FOOD_VARIANCE = INITIAL_SPAWN_FOOD_VARIANCE;
     }
 }

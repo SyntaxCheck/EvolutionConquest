@@ -114,7 +114,7 @@ public class CollisionThread
             }
             _gameData.LockCreatures.Locker = "";
 
-            Thread.Sleep(33); //We do not want to rapidly loop this code since it will slow down the main thread while we hold locks
+            //Thread.Sleep(33); //We do not want to rapidly loop this code since it will slow down the main thread while we hold locks
         }
     }
     private void UpdateCreatureSight(int creatureIndex)

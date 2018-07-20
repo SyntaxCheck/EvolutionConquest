@@ -50,19 +50,22 @@ public class StatsThread
 
             try
             {
-                _gameData.LockChart.Locker = "StatsThread";
                 lock (_gameData.LockChart)
                 {
                     UpdateChart();
                     UpdateGraph();
                     using (var chartimage = new MemoryStream())
                     {
-                        System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(_chart.Width, _chart.Height);
-                        _chart.DrawToBitmap(bitmap, new System.Drawing.Rectangle(0,0,bitmap.Width,bitmap.Height));
-                        bitmap.Save("Test.bmp");
+                        _chart.SaveImage(chartimage, ChartImageFormat.Png);
+
+                        if (String.IsNullOrEmpty(_gameData.LockChart.Locker))
+                        {
+                            Texture2D chartTexture = Texture2D.FromStream(_gameData.GraphicsDevice, chartimage);
+
+                            _gameData.ChartTexture = chartTexture;
+                        }
                     }
                 }
-                _gameData.LockChart.Locker = "";
 
                 //When the main game graphs update then we should write a new record to the CSV file
                 if (NumberOfTimesChartDataUpdatedLast < _gameData.NumberOfTimesChartDataUpdated)
