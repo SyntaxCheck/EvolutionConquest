@@ -138,9 +138,9 @@ public class GameData
 
     public void CalculateMapStatistics()
     {
-        MapStatistics.AliveCreatures = Creatures.Count;
+        MapStatistics.AliveCreatures = Creatures.Where(t => t.IsAlive).Count();
         MapStatistics.DeadCreatures = DeadCreatures.Count;
-        MapStatistics.FoodOnMap = Food.Count;
+        MapStatistics.FoodOnMap = Food.Where(t => t.FoodType >= 0).Count();
         MapStatistics.EggsOnMap = Eggs.Count;
         MapStatistics.PlantsOnMap = Plants.Count;
         MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);

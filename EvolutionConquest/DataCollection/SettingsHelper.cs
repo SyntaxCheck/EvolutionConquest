@@ -93,8 +93,8 @@ public class SettingsHelper
     {
         settingsIn.WorldSize = 4000;
         settingsIn.ClimateHeightPercent = 20;
-        settingsIn.StartingFoodRatio = 500f;
-        settingsIn.FoodGenerationValue = 7f;
+        settingsIn.StartingFoodRatio = 400f;
+        settingsIn.FoodGenerationValue = 5f;
         settingsIn.TicksUntilFoodUpgradeStarts = 1800f;
         settingsIn.TicksBetweenFoodUpgrades = 150f;
         settingsIn.StartingPlantRatio = 164f;

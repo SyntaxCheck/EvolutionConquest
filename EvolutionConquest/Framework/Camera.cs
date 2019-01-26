@@ -180,7 +180,7 @@ public class Camera
     }
 
     // Move the camera's position based on input
-    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, ref GameData gameData)
+    public void HandleInput(InputState inputState, PlayerIndex? controllingPlayer, GameTime gameTime, ref GameData gameData)
     {
         Vector2 cameraMovement = Vector2.Zero;
         float cameraMovementAmount = 0.1f / Zoom;
@@ -546,8 +546,8 @@ public class Camera
         {
             cameraMovement.Normalize();
 
-            // scale our movement to move 25 pixels per second
-            cameraMovement *= 25f;
+            // scale our movement to move based on gametime
+            cameraMovement *= (1500f * (float)gameTime.ElapsedGameTime.TotalSeconds);
 
             MoveCamera(gameData.Settings.WorldSize, cameraMovement, true);
         }

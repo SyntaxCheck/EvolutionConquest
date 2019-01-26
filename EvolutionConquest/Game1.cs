@@ -92,6 +92,7 @@ namespace EvolutionConquest
         private bool _chartPosSet;
         private float _foodGenerationIntervalSeconds;
         private float _foodLifeSpan;
+        private long _elapsedBorderCollisionTicks;
         private TimeSpan _totalElapsedTime;
         //Constants
         private const int SESSION_NUMBER = 1;
@@ -113,7 +114,7 @@ namespace EvolutionConquest
         private const bool ENABLE_CLIMATE = true;
         private const bool ENABLE_DATABASE_STATS = false;
         private const bool ENABLE_CSV_STATS = true;
-        private const bool ENABLE_DEBUG_TIME_DATA = true;
+        private const bool ENABLE_DEBUG_TIME_DATA = false;
         //Colors
         private Color MAP_COLOR = Color.SandyBrown;
 
@@ -315,8 +316,9 @@ namespace EvolutionConquest
 
             //Calculate the food spawn speed
             //_foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
-            _foodGenerationIntervalSeconds = 10000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
-            _foodLifeSpan = 9000f + (_gameData.Settings.FoodGenerationValue * 100f);
+            _foodGenerationIntervalSeconds = 12000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
+            //_foodLifeSpan = 100f + (_gameData.Settings.FoodGenerationValue * 100f);
+            _foodLifeSpan = 3125; //Every 500 maintains ~1600 food
             //_foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
 
             //Generate initial Map stats so that the stats do not read all 0's at the beginning
@@ -436,7 +438,8 @@ namespace EvolutionConquest
                 bool tick = false;
 
                 _elapsedTimeSinceDebugTimeData += gameTime.ElapsedGameTime.TotalSeconds;
-                if (_elapsedTimeSinceDebugTimeData / 60 >= MINUTES_TILL_DEBUG_TIME_DATA)
+                #pragma warning disable CS0162 // Unreachable code detected
+                if (ENABLE_DEBUG_TIME_DATA && _elapsedTimeSinceDebugTimeData / 60 >= MINUTES_TILL_DEBUG_TIME_DATA)
                 {
                     //Write Debug file
                     List<string> csvDebugTimerFile = BuildDebugTimerList();
@@ -909,7 +912,11 @@ namespace EvolutionConquest
         }
         private void UpdateOffTickHandleCollisionsAndMovement(GameTime gameTime)
         {
+            _elapsedBorderCollisionTicks++;
             List<Creature> deadCreaturesToRemove = new List<Creature>();
+
+            //Wait for cleanup to finish
+            lock (_gameData.LockCreatures) { }
 
             //CollisionDetection
             //Border Collision Detection
@@ -924,7 +931,10 @@ namespace EvolutionConquest
                             _gameData.Creatures[i].Direction.X < 0 && _gameData.Creatures[i].Direction.Y >= 0 ||
                             _gameData.Creatures[i].Direction.X < 0 && _gameData.Creatures[i].Direction.Y < 0)
                         {
-                            _gameData.Creatures[i].Rotation = (((float)Math.PI * 2) - _gameData.Creatures[i].Rotation);
+                            if (_gameData.Creatures[i].BorderCollisionTickNum != _elapsedBorderCollisionTicks - 1)
+                                _gameData.Creatures[i].Rotation = (((float)Math.PI * 2) - _gameData.Creatures[i].Rotation);
+
+                            _gameData.Creatures[i].BorderCollisionTickNum = _elapsedBorderCollisionTicks;
                         }
                     }
                     if (_gameData.Creatures[i].Position.Y - (_gameData.Creatures[i].Texture.Height / 2) <= 0 || _gameData.Creatures[i].Position.Y + (_gameData.Creatures[i].Texture.Height / 2) >= _gameData.Settings.WorldSize)
@@ -934,7 +944,10 @@ namespace EvolutionConquest
                             _gameData.Creatures[i].Direction.X < 0 && _gameData.Creatures[i].Direction.Y >= 0 ||
                             _gameData.Creatures[i].Direction.X < 0 && _gameData.Creatures[i].Direction.Y < 0)
                         {
-                            _gameData.Creatures[i].Rotation = (((float)Math.PI) - _gameData.Creatures[i].Rotation);
+                            if (_gameData.Creatures[i].BorderCollisionTickNum != _elapsedBorderCollisionTicks - 1)
+                                _gameData.Creatures[i].Rotation = (((float)Math.PI) - _gameData.Creatures[i].Rotation);
+
+                            _gameData.Creatures[i].BorderCollisionTickNum = _elapsedBorderCollisionTicks;
                         }
                     }
 
@@ -1094,7 +1107,7 @@ namespace EvolutionConquest
             {
                 _inputState.Update();
                 _player.HandleInput(_inputState, PlayerIndex.One, ref _gameData, _settingsTabPanel);
-                Global.Camera.HandleInput(_inputState, PlayerIndex.One, ref _gameData);
+                Global.Camera.HandleInput(_inputState, PlayerIndex.One, gameTime, ref _gameData);
 
                 //if (_gameData.ShowChart)
                 //{
@@ -2063,6 +2076,7 @@ namespace EvolutionConquest
             _creatureIdCtr = 0;
             _elapsedTicksForInitialFoodUpgrade = 0;
             _elapsedTicksSinceFoodUpgrade = 0;
+            _elapsedBorderCollisionTicks = 0;
             _gameData.CurrentMaxFoodLevel = 2;
             _climateHeight = (int)(_gameData.Settings.WorldSize * (_gameData.Settings.ClimateHeightPercent * 0.01));
             _totalElapsedTime = new TimeSpan();
