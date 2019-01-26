@@ -201,7 +201,7 @@ public class Plant : SpriteBase
             SpreadPlant = true;
         }
 
-        DisplayText = FoodAmount.ToString() + "/" + FoodAmountCap;
+        DisplayText = Math.Round(FoodAmount,0).ToString() + "/" + FoodAmountCap + " (" + FoodStrength.ToString() + ")";
     }
     public Plant GetBabyPlant(Random rand)
     {

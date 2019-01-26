@@ -140,13 +140,13 @@ public class GameData
     {
         MapStatistics.AliveCreatures = Creatures.Where(t => t.IsAlive).Count();
         MapStatistics.DeadCreatures = DeadCreatures.Count;
-        MapStatistics.FoodOnMap = Food.Where(t => !t.MarkForDelete).Count();
+        MapStatistics.FoodOnMap = Food.Where(t => t.FoodType >= 0).Count();
         MapStatistics.EggsOnMap = Eggs.Count;
-        MapStatistics.PlantsOnMap = Plants.Where(t => !t.MarkForDelete).Count();
-        MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && o.IsAlive && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && o.IsAlive && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentOmnivore = Math.Round((double)Creatures.Where(o => o.IsOmnivore && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PlantsOnMap = Plants.Count;
+        MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentOmnivore = Math.Round((double)Creatures.Where(o => o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
         MapStatistics.UniqueSpecies = GetUniqueSpeciesCount();
 
         double percentTotal = MapStatistics.PercentHerbavore + MapStatistics.PercentCarnivore + MapStatistics.PercentScavenger + MapStatistics.PercentOmnivore;

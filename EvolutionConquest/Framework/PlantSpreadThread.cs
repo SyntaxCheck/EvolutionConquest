@@ -33,15 +33,16 @@ public class PlantSpreadThread
     {
         while (true)
         {
+            Thread.Sleep(10);
             try
             {
-                lock (_gameData.LockPlants)
+                if (_gameData.TickElapsedPlants)
                 {
-                    if (_gameData.TickElapsedPlants)
-                    {
-                        _gameData.TickElapsedPlants = false;
-                        TickCount++;
+                    _gameData.TickElapsedPlants = false;
+                    TickCount++;
 
+                    lock (_gameData.LockPlants)
+                    {
                         for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
                         {
                             if (!_gameData.Plants[i].MarkForDelete)
@@ -141,10 +142,10 @@ public class PlantSpreadThread
                                 }
                             }
                         }
-                        if (TickCount > 10)
-                        {
-                            TickCount = 0;
-                        }
+                    }
+                    if (TickCount > 10)
+                    {
+                        TickCount = 0;
                     }
                 }
             }

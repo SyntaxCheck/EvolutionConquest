@@ -73,8 +73,8 @@ public class CollisionThread
                             {
                                 lock (_gameData.LockPlants)
                                 {
-                                    //Temp creature lock to wait for creature cleanup to finish before we process collisions. This code is not important enough to retain a full lock
-                                    lock (_gameData.LockCreatures) { }
+                                    ////Temp creature lock to wait for creature cleanup to finish before we process collisions. This code is not important enough to retain a full lock
+                                    //lock (_gameData.LockCreatures) { }
                                     for (int k = (_gameData.MapGridData[p.X, p.Y].Plants.Count - 1); k >= 0; k--)
                                     {
                                         if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)

@@ -134,6 +134,7 @@ public class Creature : SpriteBase
         }
     }
     public Color CreatureColor { get; set; }
+    public long BorderCollisionTickNum { get; set; } //Holds the border collision tick number when we last ran into the border, used to fix creatures getting stuck on border
     public int TotalFoodEaten { get; set; } //Statistical count of how many food were eaten
     public int TicksSinceLastEgg { get; set; } //The amount of Game Ticks since the last egg was created
     public int TicksSinceLastDigestedFood { get; set; } //The amount of Game Ticks since the last food was digested
@@ -310,6 +311,7 @@ public class Creature : SpriteBase
         FoodTypeGreen = 0;
         CreatureColor = Color.White;
         MaxUndigestedFood = gameData.MaxCreatureUndigestedFood;
+        BorderCollisionTickNum = -999;
 
         int foodTypeRand = rand.Next(0,3);
         switch (foodTypeRand)
