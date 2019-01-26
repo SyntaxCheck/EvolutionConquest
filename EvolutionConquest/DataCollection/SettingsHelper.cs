@@ -117,8 +117,8 @@ public class SettingsHelper
         settingsIn.StartingEggIncubationMax = 80;
         settingsIn.StartingFoodDigestionMin = 5;
         settingsIn.StartingFoodDigestionMax = 25;
-        settingsIn.StartingSpeedMin = 5;
-        settingsIn.StartingSpeedMax = 25;
+        settingsIn.StartingSpeedMin = 12;
+        settingsIn.StartingSpeedMax = 20;
         settingsIn.StartingLifespanMin = 100;
         settingsIn.StartingLifespanMax = 120;
         settingsIn.StartingHerbavoreLevelMin = 1;

@@ -315,8 +315,9 @@ namespace EvolutionConquest
 
             //Calculate the food spawn speed
             //_foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
-            _foodGenerationIntervalSeconds = 10000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
-            _foodLifeSpan = 9000f + (_gameData.Settings.FoodGenerationValue * 100f);
+            _foodGenerationIntervalSeconds = 34000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
+            //_foodLifeSpan = 9000f + (_gameData.Settings.FoodGenerationValue * 100f);
+            _foodLifeSpan = 3125;
             //_foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
 
             //Generate initial Map stats so that the stats do not read all 0's at the beginning
