@@ -14,6 +14,8 @@ public class PlantSpreadThread
     private int GRID_CELL_SIZE;
     private int TickCount;
     private SpriteFont _foodFont;
+    private const int MAX_PLANTS_PER_GRIDSPACE = 4;
+    private const double MAX_PLANT_DENSITY = 0.6;
 
     public PlantSpreadThread(GameData sharedGameData, Random sharedRand, int sharedGridCellSize)
     {
@@ -147,6 +149,53 @@ public class PlantSpreadThread
                     {
                         TickCount = 0;
                     }
+                }
+                else
+                {
+                    //Validate that a plant is allowed to spread. Check The surrounding grid to see if there are too many plants already. This simulates running out of space for sunlight and water
+
+                    try
+                    {
+                        for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
+                        {
+                            foreach(Point p in _gameData.Plants[i].GridPositions)
+                            {
+                                Point topLeft = new Point(p.X - 5, p.Y - 5);
+                                Point bottomRight = new Point(p.X + 5, p.Y + 5);
+
+                                if (topLeft.X < 0) topLeft.X = 0;
+                                if (topLeft.X > _gameData.MapGridData.GetLength(0)) topLeft.X = _gameData.MapGridData.GetLength(0);
+                                if (topLeft.Y < 0) topLeft.Y = 0;
+                                if (topLeft.Y > _gameData.MapGridData.GetLength(1)) topLeft.Y = _gameData.MapGridData.GetLength(1);
+
+                                if (bottomRight.X < 0) bottomRight.X = 0;
+                                if (bottomRight.X > _gameData.MapGridData.GetLength(0)) bottomRight.X = _gameData.MapGridData.GetLength(0);
+                                if (bottomRight.Y < 0) bottomRight.Y = 0;
+                                if (bottomRight.Y > _gameData.MapGridData.GetLength(1)) bottomRight.Y = _gameData.MapGridData.GetLength(1);
+
+                                int plantCount = 0;
+                                int gridCount = 0;
+                                for (int j = topLeft.X; j < bottomRight.X; j++)
+                                {
+                                    for (int k = topLeft.Y; k < bottomRight.Y; k++)
+                                    {
+                                        plantCount += _gameData.MapGridData[j, k].Plants.Where(t => !t.MarkForDelete).Count();
+                                        gridCount++;
+                                    }
+                                }
+
+                                int projectedMaxPlants = gridCount * MAX_PLANTS_PER_GRIDSPACE;
+                                double plantDensity = plantCount / projectedMaxPlants;
+
+                                if (plantDensity > MAX_PLANT_DENSITY)
+                                {
+                                    _gameData.Plants[i].AllowedToSpread = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception) { } //Ignore any errors here, not critical code
                 }
             }
             catch (Exception ex)

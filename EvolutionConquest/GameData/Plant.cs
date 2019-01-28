@@ -95,6 +95,7 @@ public class Plant : SpriteBase
     public int TicksSinceLastSpread { get; set; } //Used for determining when to spread/seed new plants
     public int TotalTimesEatenFrom { get; set; } //Statistical purposes
     public bool FoodHasBeenEatenSinceLastTick { get; set; }
+    public bool AllowedToSpread { get; set; } //When set to TRUE the plant can enter spread logic. If false the are is too saturated with plants
     public bool SpreadPlant { get; set; } //When set to TRUE main game logic will spread new plants in the update event
     public List<PlantCreatureInteraction> Interactions { get; set; }
     public string DisplayText { get; set; } //Text showing how much food is available
@@ -123,6 +124,7 @@ public class Plant : SpriteBase
         TexturesList = new List<TextureContainer>();
         FoodHasBeenEatenSinceLastTick = false;
         SpreadPlant = false;
+        AllowedToSpread = true;
         MarkForDelete = false;
         TicksSinceBirth = TicksSinceLastEaten = TicksSinceLastGrow = TicksSinceLastSpread = TotalTimesEatenFrom = 0;
         Interactions = new List<PlantCreatureInteraction>();
@@ -201,7 +203,7 @@ public class Plant : SpriteBase
             SpreadPlant = true;
         }
 
-        DisplayText = Math.Round(FoodAmount,0).ToString() + "/" + FoodAmountCap + " (" + FoodStrength.ToString() + ")";
+        DisplayText = Math.Round(FoodAmount,0).ToString() + "/" + Math.Round(FoodAmountCap,0).ToString() + " (" + FoodStrength.ToString() + ")";
     }
     public Plant GetBabyPlant(Random rand)
     {
@@ -231,35 +233,38 @@ public class Plant : SpriteBase
     }
     public void GetExpandedGridPositions(GameData gameData)
     {
-        for (int i = 0; i < GridPositions.Count(); i++)
+        if (AllowedToSpread)
         {
-            ExpandedGridPositions.Add(GridPositions[i]);
+            for (int i = 0; i < GridPositions.Count(); i++)
+            {
+                ExpandedGridPositions.Add(GridPositions[i]);
 
-            Point left = new Point(GridPositions[i].X - 1, GridPositions[i].Y);
-            Point right = new Point(GridPositions[i].X + 1, GridPositions[i].Y);
-            Point top = new Point(GridPositions[i].X, GridPositions[i].Y - 1);
-            Point bottom = new Point(GridPositions[i].X, GridPositions[i].Y + 1);
-            Point topLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y - 1);
-            Point topRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y - 1);
-            Point bottomRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y + 1);
-            Point bottomLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y + 1);
+                Point left = new Point(GridPositions[i].X - 1, GridPositions[i].Y);
+                Point right = new Point(GridPositions[i].X + 1, GridPositions[i].Y);
+                Point top = new Point(GridPositions[i].X, GridPositions[i].Y - 1);
+                Point bottom = new Point(GridPositions[i].X, GridPositions[i].Y + 1);
+                Point topLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y - 1);
+                Point topRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y - 1);
+                Point bottomRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y + 1);
+                Point bottomLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y + 1);
 
-            if (!ExpandedGridPositions.Contains(left) && left.X >= 0)
-                ExpandedGridPositions.Add(left);
-            if (!ExpandedGridPositions.Contains(right) && right.X < gameData.MapGridData.GetLength(0) - 1)
-                ExpandedGridPositions.Add(right);
-            if (!ExpandedGridPositions.Contains(top) && top.Y >= 0)
-                ExpandedGridPositions.Add(top);
-            if (!ExpandedGridPositions.Contains(bottom) && bottom.Y < gameData.MapGridData.GetLength(1) - 1)
-                ExpandedGridPositions.Add(bottom);
-            if (!ExpandedGridPositions.Contains(topLeft) && topLeft.X >= 0 && topLeft.Y >= 0)
-                ExpandedGridPositions.Add(topLeft);
-            if (!ExpandedGridPositions.Contains(topRight) && topRight.X < gameData.MapGridData.GetLength(0) - 1 && topRight.Y >= 0)
-                ExpandedGridPositions.Add(topRight);
-            if (!ExpandedGridPositions.Contains(bottomRight) && bottomRight.X < gameData.MapGridData.GetLength(0) - 1 && bottomRight.Y < gameData.MapGridData.GetLength(1) - 1)
-                ExpandedGridPositions.Add(bottomRight);
-            if (!ExpandedGridPositions.Contains(bottomLeft) && bottomLeft.X >= 0 && bottomLeft.Y < gameData.MapGridData.GetLength(1) - 1)
-                ExpandedGridPositions.Add(bottomLeft);
+                if (!ExpandedGridPositions.Contains(left) && left.X >= 0)
+                    ExpandedGridPositions.Add(left);
+                if (!ExpandedGridPositions.Contains(right) && right.X < gameData.MapGridData.GetLength(0) - 1)
+                    ExpandedGridPositions.Add(right);
+                if (!ExpandedGridPositions.Contains(top) && top.Y >= 0)
+                    ExpandedGridPositions.Add(top);
+                if (!ExpandedGridPositions.Contains(bottom) && bottom.Y < gameData.MapGridData.GetLength(1) - 1)
+                    ExpandedGridPositions.Add(bottom);
+                if (!ExpandedGridPositions.Contains(topLeft) && topLeft.X >= 0 && topLeft.Y >= 0)
+                    ExpandedGridPositions.Add(topLeft);
+                if (!ExpandedGridPositions.Contains(topRight) && topRight.X < gameData.MapGridData.GetLength(0) - 1 && topRight.Y >= 0)
+                    ExpandedGridPositions.Add(topRight);
+                if (!ExpandedGridPositions.Contains(bottomRight) && bottomRight.X < gameData.MapGridData.GetLength(0) - 1 && bottomRight.Y < gameData.MapGridData.GetLength(1) - 1)
+                    ExpandedGridPositions.Add(bottomRight);
+                if (!ExpandedGridPositions.Contains(bottomLeft) && bottomLeft.X >= 0 && bottomLeft.Y < gameData.MapGridData.GetLength(1) - 1)
+                    ExpandedGridPositions.Add(bottomLeft);
+            }
         }
     }
     public override void OnPositionSet()
@@ -292,7 +297,7 @@ public class Plant : SpriteBase
     }
     public void CheckTexture()
     {
-        if (FoodAmount >= 80)
+        if (FoodAmount >= 50)
         {
             if (CurrentTexture != "T5")
             {
@@ -300,7 +305,7 @@ public class Plant : SpriteBase
                 Texture = TexturesList.First(t => t.Name == "T5").Texture;
             }
         }
-        else if (FoodAmount >= 50)
+        else if (FoodAmount >= 30)
         {
             if (CurrentTexture != "T4")
             {
@@ -308,7 +313,7 @@ public class Plant : SpriteBase
                 Texture = TexturesList.First(t => t.Name == "T4").Texture;
             }
         }
-        else if (FoodAmount >= 25)
+        else if (FoodAmount >= 20)
         {
             if (CurrentTexture != "T3")
             {
@@ -316,7 +321,7 @@ public class Plant : SpriteBase
                 Texture = TexturesList.First(t => t.Name == "T3").Texture;
             }
         }
-        else if (FoodAmount >= 15)
+        else if (FoodAmount >= 10)
         {
             if (CurrentTexture != "T2")
             {

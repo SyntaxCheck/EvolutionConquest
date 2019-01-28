@@ -80,6 +80,7 @@ public class GameData
     public LockClass LockFood { get; set; } //Datatype is string only because we need a reference datatype to lock
     public LockClass LockCreatures { get; set; } //Datatype is string only because we need a reference datatype to lock
     public LockClass LockChart { get; set; } //Datatype is string only because we need a reference datatype to lock
+    public int TotalCreatureCleanupSkips { get; set; }
     public bool TickElapsedPlants { get; set; }
     public double TotalFitnessPoints { get; set; }
     public int NumberOfFitnessCalculations { get; set; }
@@ -133,6 +134,7 @@ public class GameData
         LockPlants = new LockClass();
         LockCreatures = new LockClass();
         LockChart = new LockClass();
+        TotalCreatureCleanupSkips = 0;
         TickElapsedPlants = false;
     }
 
@@ -143,10 +145,10 @@ public class GameData
         MapStatistics.FoodOnMap = Food.Where(t => t.FoodType >= 0).Count();
         MapStatistics.EggsOnMap = Eggs.Count;
         MapStatistics.PlantsOnMap = Plants.Count;
-        MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && !o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger).Count() / MapStatistics.AliveCreatures, 2);
-        MapStatistics.PercentOmnivore = Math.Round((double)Creatures.Where(o => o.IsOmnivore).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentHerbavore = Math.Round((double)Creatures.Where(o => o.IsHerbavore && !o.IsOmnivore && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentCarnivore = Math.Round((double)Creatures.Where(o => o.IsCarnivore && !o.IsOmnivore && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentScavenger = Math.Round((double)Creatures.Where(o => o.IsScavenger && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
+        MapStatistics.PercentOmnivore = Math.Round((double)Creatures.Where(o => o.IsOmnivore && o.IsAlive).Count() / MapStatistics.AliveCreatures, 2);
         MapStatistics.UniqueSpecies = GetUniqueSpeciesCount();
 
         double percentTotal = MapStatistics.PercentHerbavore + MapStatistics.PercentCarnivore + MapStatistics.PercentScavenger + MapStatistics.PercentOmnivore;

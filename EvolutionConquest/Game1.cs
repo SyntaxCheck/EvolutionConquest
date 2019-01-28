@@ -80,6 +80,7 @@ namespace EvolutionConquest
         private List<string> _controlsListText;
         private List<TextureContainer> _textureList;
         private double _elapsedSecondsSinceTick;
+        private double _elapsedSecondsSinceOffTick;
         private double _elapsedTimeSinceFoodGeneration;
         private double _elapsedTimeSinceDebugTimeData;
         private float _tickSeconds;
@@ -107,6 +108,7 @@ namespace EvolutionConquest
         private const int EVENT_LOG_DISPLAY_COUNT = 38;
         //GamePlay feature toggles
         private const bool ENABLE_GAME_RESETS = true;
+        private const bool ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH = false;
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
         private const bool ENABLE_ENERGY_DEATH = true;
@@ -378,7 +380,7 @@ namespace EvolutionConquest
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Failed to establish conncetion to database. Stats will not be written. Ex: " + ex.Message);
+                    System.Windows.Forms.MessageBox.Show("Failed to establish conncetion to database. Stats will not be written. Ex: " + ex.Message);
                     _writeStats = false;
                 }
             }
@@ -468,11 +470,12 @@ namespace EvolutionConquest
                     _gameData.BuildSettingsPanel = false;
                 }
 
-                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER)
+                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER && (!ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH || _gameData.Creatures.Where(t => t.IsAlive).Count() > 0))
                 {
                     _tickSeconds = 1f / TICKS_PER_SECOND;
 
                     _elapsedSecondsSinceTick += gameTime.ElapsedGameTime.TotalSeconds;
+                    _elapsedSecondsSinceOffTick += gameTime.ElapsedGameTime.TotalSeconds;
                     _elapsedTimeSinceFoodGeneration += gameTime.ElapsedGameTime.TotalSeconds;
                     if (_elapsedSecondsSinceTick > _tickSeconds)
                     {
@@ -480,8 +483,8 @@ namespace EvolutionConquest
                         tick = true;
                     }
 
-                    //During a tick do all creature processing
-                    if (tick)
+                    //During a tick do all creature processing and force offtick processing atleast once every 5 seconds
+                    if (tick && _elapsedSecondsSinceOffTick < 5.0)
                     {
                         debugDttm = DateTime.Now;
                         UpdateTick(gameTime);
@@ -489,6 +492,7 @@ namespace EvolutionConquest
                     }
                     else //Off tick processing
                     {
+                        _elapsedSecondsSinceOffTick = 0;
                         debugDttm = DateTime.Now;
                         UpdateOffTick(gameTime);
                         _debugTimer.TimeUpdateOffTick += (DateTime.Now - debugDttm).TotalMilliseconds;
@@ -532,11 +536,7 @@ namespace EvolutionConquest
                 }
                 _frames++;
                 _elapsedSeconds += gameTime.ElapsedGameTime.TotalSeconds;
-
-                if (_fps >= 30)
-                    if (1 == 1)
-                    { }
-
+            
                 // === DRAW WITHIN THE WORLD ===
                 DateTime debugDttm = DateTime.Now;
                 DrawWorldObjects();
@@ -864,8 +864,10 @@ namespace EvolutionConquest
                     }
                 }
             }
-            if (String.IsNullOrEmpty(_gameData.LockCreatures.Locker))
+            if (String.IsNullOrEmpty(_gameData.LockCreatures.Locker) || _gameData.TotalCreatureCleanupSkips > 10)
             {
+                _gameData.TotalCreatureCleanupSkips = 0;
+
                 lock (_gameData.LockCreatures)
                 {
                     for (int i = _gameData.Creatures.Count - 1; i >= 0; i--)
@@ -907,6 +909,10 @@ namespace EvolutionConquest
                         }
                     }
                 }
+            }
+            else
+            {
+                _gameData.TotalCreatureCleanupSkips++;
             }
             UpdateOffTickEventCheckCleanup(gameTime);
         }
@@ -1456,6 +1462,7 @@ namespace EvolutionConquest
                 if(_gameData.FocusIndex >= 0)
                     DrawDebugDataForCreature(_gameData.Focus, false);
 
+                #pragma warning disable CS0162 // Unreachable code detected
                 if (ENABLE_DEBUG_DATA)
                 {
                     //This is for Debugging interactions
@@ -2066,6 +2073,7 @@ namespace EvolutionConquest
             _connectionManager = new ConnectionManager();
             _debugTimer = new DebugTimer();
             _elapsedSecondsSinceTick = 0;
+            _elapsedSecondsSinceOffTick = 0;
             _elapsedTimeSinceFoodGeneration = 0;
             _elapsedTimeSinceDebugTimeData = 0;
             _elapsedTicksSinceSecondProcessing = 0;
@@ -2080,6 +2088,7 @@ namespace EvolutionConquest
             _gameData.CurrentMaxFoodLevel = 2;
             _climateHeight = (int)(_gameData.Settings.WorldSize * (_gameData.Settings.ClimateHeightPercent * 0.01));
             _totalElapsedTime = new TimeSpan();
+            _chartPosSet = false;
         }
         private void BuildSettingsPanel()
         {
