@@ -7,8 +7,11 @@ using System.Threading.Tasks;
 
 public class Plant : SpriteBase
 {
+    private const int PLANT_SPREAD_RADIUS_MIN = 3;
+    private const int PLANT_SPREAD_RADIUS_MAX = 10;
     private int[] RotationVals = { 0, 90, 180, 270 };
     private bool _markForDelete;
+    private bool _superTree;
     private float _lifespan;
     private int _eatCooldownTicks;
     private int _spreadCooldownTicks;
@@ -97,12 +100,35 @@ public class Plant : SpriteBase
     public bool FoodHasBeenEatenSinceLastTick { get; set; }
     public bool AllowedToSpread { get; set; } //When set to TRUE the plant can enter spread logic. If false the are is too saturated with plants
     public bool SpreadPlant { get; set; } //When set to TRUE main game logic will spread new plants in the update event
+    public bool SuperTree
+    {
+        get
+        {
+            return _superTree;
+        }
+        set
+        {
+            _superTree = value;
+            if (_superTree)
+            {
+                LifespanActual = LifespanActual * 100;
+            }
+        }
+    } //Super trees has 100x lifespan
     public List<PlantCreatureInteraction> Interactions { get; set; }
     public string DisplayText { get; set; } //Text showing how much food is available
     public Vector2 TextSize { get; set; }
     public float Rotation { get; set; } //How the plant is facing: 0, 90, 180, 270
     public List<Point> ExpandedGridPositions { get; set; }
     public List<Vector2> SaplingSpawnPoints { get; set; }
+    public int PlantSpreadNorthCheckRadius { get; set; }
+    public int PlantSpreadSouthCheckRadius { get; set; }
+    public int PlantSpreadEastCheckRadius { get; set; }
+    public int PlantSpreadWestCheckRadius { get; set; }
+    public bool NoVerticalSaplingPreference { get; set; } //Saplings can be either south or north of the current plant
+    public bool NoHorizontalSaplingPreference { get; set; } //Saplings can be either east or west of the current plant
+    public bool PreferSaplingNorth { get; set; } //Do saplings prefer north
+    public bool PreferSaplingWest { get; set; } //Do saplings prefer west
     public bool MarkForDelete
     {
         get
@@ -125,7 +151,12 @@ public class Plant : SpriteBase
         FoodHasBeenEatenSinceLastTick = false;
         SpreadPlant = false;
         AllowedToSpread = true;
+        NoVerticalSaplingPreference = true;
+        NoHorizontalSaplingPreference = true;
+        PreferSaplingNorth = false;
+        PreferSaplingWest = false;
         MarkForDelete = false;
+        SuperTree = false;
         TicksSinceBirth = TicksSinceLastEaten = TicksSinceLastGrow = TicksSinceLastSpread = TotalTimesEatenFrom = 0;
         Interactions = new List<PlantCreatureInteraction>();
     }
@@ -137,7 +168,7 @@ public class Plant : SpriteBase
         if (FoodAmount > 0)
         {
             TotalTimesEatenFrom++;
-            FoodAmount -= FoodAmountGivenOnEat;
+            FoodAmount -= (FoodAmountGivenOnEat * 4); //We only give 0.25 on eat initially so multiple by 4 to maintain initial tree depletion rate
             if (FoodAmount < 0)
                 FoodAmount = 0;
         }
@@ -156,19 +187,27 @@ public class Plant : SpriteBase
         FoodAmount = 5;
         FoodAmountCap = rand.Next(100, 500);
         FoodAmountGivenOnGrow = rand.Next(1, 3);
-        //FoodAmountGivenOnGrow = rand.Next(1, 10);
-        FoodAmountGivenOnEat = 1;
+        FoodAmountGivenOnEat = 0.25f;
         FoodStrength = 10;
         EatCooldownTicks = rand.Next(100, 200);
         NumberOfSaplings = rand.Next(0, 2);
         SpreadCooldownTicks = rand.Next(1700, 2200);
-        //SpreadCooldownTicks = rand.Next(1, 1);
         GrowCooldownTicks = rand.Next(350, 450);
-        //GrowCooldownTicks = rand.Next(175, 250);
         GrowDelayOnEatTicks = rand.Next(50, 60);
-        //GrowDelayOnEatTicks = rand.Next(20, 30);
         FoodType = 0; //NOT IMPLEMENTED
         Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
+        PlantSpreadNorthCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
+        PlantSpreadSouthCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
+        PlantSpreadEastCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
+        PlantSpreadWestCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
+        SuperTree = (rand.Next(0, 100) > 75); //75% chance for initial trees to be a super tree
+        if (SuperTree)
+        {
+            CurrentTexture = "TS1";
+            Texture = TexturesList.First(t => t.Name == "TS1").Texture;
+            if (NumberOfSaplings == 0)
+                NumberOfSaplings = 1;
+        }
     }
     public void AdvanceTick(Random rand)
     {
@@ -197,7 +236,7 @@ public class Plant : SpriteBase
                 FoodAmount = FoodAmountCap;
         }
 
-        if (TicksSinceLastSpread >= SpreadCooldownTicksActual)
+        if (AllowedToSpread && TicksSinceLastSpread >= SpreadCooldownTicksActual)
         {
             TicksSinceLastSpread = 0;
             SpreadPlant = true;
@@ -228,43 +267,52 @@ public class Plant : SpriteBase
         babyPlant.FoodType = FoodType;
         babyPlant.Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
         babyPlant.NumberOfSaplings = rand.Next(0, 2);
+        babyPlant.PlantSpreadNorthCheckRadius = PlantSpreadNorthCheckRadius + MutateSpreadRadius(rand, PlantSpreadNorthCheckRadius, 1, 10);
+        babyPlant.PlantSpreadSouthCheckRadius = PlantSpreadSouthCheckRadius + MutateSpreadRadius(rand, PlantSpreadSouthCheckRadius, 1, 10);
+        babyPlant.PlantSpreadEastCheckRadius = PlantSpreadEastCheckRadius + MutateSpreadRadius(rand, PlantSpreadEastCheckRadius, 1, 10);
+        babyPlant.PlantSpreadWestCheckRadius = PlantSpreadWestCheckRadius + MutateSpreadRadius(rand, PlantSpreadWestCheckRadius, 1, 10);
+        babyPlant.SuperTree = (rand.Next(0, 1000) > 990); //1% chance for a new SuperTree baby
+        if (babyPlant.SuperTree)
+        {
+            babyPlant.CurrentTexture = "TS0";
+            babyPlant.Texture = TexturesList.First(t => t.Name == "TS0").Texture;
+            if (babyPlant.NumberOfSaplings == 0)
+                babyPlant.NumberOfSaplings = 1;
+        }
 
         return babyPlant;
     }
     public void GetExpandedGridPositions(GameData gameData)
     {
-        if (AllowedToSpread)
+        for (int i = 0; i < GridPositions.Count(); i++)
         {
-            for (int i = 0; i < GridPositions.Count(); i++)
-            {
-                ExpandedGridPositions.Add(GridPositions[i]);
+            ExpandedGridPositions.Add(GridPositions[i]);
 
-                Point left = new Point(GridPositions[i].X - 1, GridPositions[i].Y);
-                Point right = new Point(GridPositions[i].X + 1, GridPositions[i].Y);
-                Point top = new Point(GridPositions[i].X, GridPositions[i].Y - 1);
-                Point bottom = new Point(GridPositions[i].X, GridPositions[i].Y + 1);
-                Point topLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y - 1);
-                Point topRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y - 1);
-                Point bottomRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y + 1);
-                Point bottomLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y + 1);
+            Point left = new Point(GridPositions[i].X - 1, GridPositions[i].Y);
+            Point right = new Point(GridPositions[i].X + 1, GridPositions[i].Y);
+            Point top = new Point(GridPositions[i].X, GridPositions[i].Y - 1);
+            Point bottom = new Point(GridPositions[i].X, GridPositions[i].Y + 1);
+            Point topLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y - 1);
+            Point topRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y - 1);
+            Point bottomRight = new Point(GridPositions[i].X + 1, GridPositions[i].Y + 1);
+            Point bottomLeft = new Point(GridPositions[i].X - 1, GridPositions[i].Y + 1);
 
-                if (!ExpandedGridPositions.Contains(left) && left.X >= 0)
-                    ExpandedGridPositions.Add(left);
-                if (!ExpandedGridPositions.Contains(right) && right.X < gameData.MapGridData.GetLength(0) - 1)
-                    ExpandedGridPositions.Add(right);
-                if (!ExpandedGridPositions.Contains(top) && top.Y >= 0)
-                    ExpandedGridPositions.Add(top);
-                if (!ExpandedGridPositions.Contains(bottom) && bottom.Y < gameData.MapGridData.GetLength(1) - 1)
-                    ExpandedGridPositions.Add(bottom);
-                if (!ExpandedGridPositions.Contains(topLeft) && topLeft.X >= 0 && topLeft.Y >= 0)
-                    ExpandedGridPositions.Add(topLeft);
-                if (!ExpandedGridPositions.Contains(topRight) && topRight.X < gameData.MapGridData.GetLength(0) - 1 && topRight.Y >= 0)
-                    ExpandedGridPositions.Add(topRight);
-                if (!ExpandedGridPositions.Contains(bottomRight) && bottomRight.X < gameData.MapGridData.GetLength(0) - 1 && bottomRight.Y < gameData.MapGridData.GetLength(1) - 1)
-                    ExpandedGridPositions.Add(bottomRight);
-                if (!ExpandedGridPositions.Contains(bottomLeft) && bottomLeft.X >= 0 && bottomLeft.Y < gameData.MapGridData.GetLength(1) - 1)
-                    ExpandedGridPositions.Add(bottomLeft);
-            }
+            if (!ExpandedGridPositions.Contains(left) && left.X >= 0)
+                ExpandedGridPositions.Add(left);
+            if (!ExpandedGridPositions.Contains(right) && right.X < gameData.MapGridData.GetLength(0) - 1)
+                ExpandedGridPositions.Add(right);
+            if (!ExpandedGridPositions.Contains(top) && top.Y >= 0)
+                ExpandedGridPositions.Add(top);
+            if (!ExpandedGridPositions.Contains(bottom) && bottom.Y < gameData.MapGridData.GetLength(1) - 1)
+                ExpandedGridPositions.Add(bottom);
+            if (!ExpandedGridPositions.Contains(topLeft) && topLeft.X >= 0 && topLeft.Y >= 0)
+                ExpandedGridPositions.Add(topLeft);
+            if (!ExpandedGridPositions.Contains(topRight) && topRight.X < gameData.MapGridData.GetLength(0) - 1 && topRight.Y >= 0)
+                ExpandedGridPositions.Add(topRight);
+            if (!ExpandedGridPositions.Contains(bottomRight) && bottomRight.X < gameData.MapGridData.GetLength(0) - 1 && bottomRight.Y < gameData.MapGridData.GetLength(1) - 1)
+                ExpandedGridPositions.Add(bottomRight);
+            if (!ExpandedGridPositions.Contains(bottomLeft) && bottomLeft.X >= 0 && bottomLeft.Y < gameData.MapGridData.GetLength(1) - 1)
+                ExpandedGridPositions.Add(bottomLeft);
         }
     }
     public override void OnPositionSet()
@@ -297,52 +345,57 @@ public class Plant : SpriteBase
     }
     public void CheckTexture()
     {
+        string textureStartChars = "T";
+
+        if (SuperTree)
+            textureStartChars = "TS";
+
         if (FoodAmount >= 50)
         {
-            if (CurrentTexture != "T5")
+            if (CurrentTexture != (textureStartChars + "5"))
             {
-                CurrentTexture = "T5";
-                Texture = TexturesList.First(t => t.Name == "T5").Texture;
+                CurrentTexture = (textureStartChars + "5");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "5")).Texture;
             }
         }
         else if (FoodAmount >= 30)
         {
-            if (CurrentTexture != "T4")
+            if (CurrentTexture != (textureStartChars + "4"))
             {
-                CurrentTexture = "T4";
-                Texture = TexturesList.First(t => t.Name == "T4").Texture;
+                CurrentTexture = (textureStartChars + "4");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "4")).Texture;
             }
         }
         else if (FoodAmount >= 20)
         {
-            if (CurrentTexture != "T3")
+            if (CurrentTexture != (textureStartChars + "3"))
             {
-                CurrentTexture = "T3";
-                Texture = TexturesList.First(t => t.Name == "T3").Texture;
+                CurrentTexture = (textureStartChars + "3");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "3")).Texture;
             }
         }
         else if (FoodAmount >= 10)
         {
-            if (CurrentTexture != "T2")
+            if (CurrentTexture != (textureStartChars + "2"))
             {
-                CurrentTexture = "T2";
-                Texture = TexturesList.First(t => t.Name == "T2").Texture;
+                CurrentTexture = (textureStartChars + "2");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "2")).Texture;
             }
         }
         else if (FoodAmount >= 5)
         {
-            if (CurrentTexture != "T1")
+            if (CurrentTexture != (textureStartChars + "1"))
             {
-                CurrentTexture = "T1";
-                Texture = TexturesList.First(t => t.Name == "T1").Texture;
+                CurrentTexture = (textureStartChars + "1");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "1")).Texture;
             }
         }
         else
         {
-            if (CurrentTexture != "T0")
+            if (CurrentTexture != (textureStartChars + "0"))
             {
-                CurrentTexture = "T0";
-                Texture = TexturesList.First(t => t.Name == "T0").Texture;
+                CurrentTexture = (textureStartChars + "0");
+                Texture = TexturesList.First(t => t.Name == (textureStartChars + "0")).Texture;
             }
         }
     }
@@ -363,6 +416,24 @@ public class Plant : SpriteBase
         }
 
         return mutationValue;
+    }
+    private int MutateSpreadRadius(Random rand, int baseValue, int mutationAmountMax, int chanceToMutate)
+    {
+        int mutationValue = rand.Next(0, mutationAmountMax);
+
+        //Do not allow mutations to result in a value below 0;
+        if (baseValue - mutationValue > 0)
+        {
+            if (rand.Next(0, 100) > 50) //50% Chance to mutate positively
+            {
+                mutationValue = mutationValue * -1;
+            }
+        }
+
+        if (rand.Next(0, 100) > (100 - chanceToMutate)) //Chance to do a mutation
+            return mutationValue;
+        else
+            return baseValue;
     }
     private bool IsInBounds(Vector2 vec)
     {

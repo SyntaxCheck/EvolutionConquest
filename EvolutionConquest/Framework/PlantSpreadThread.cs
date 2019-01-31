@@ -14,8 +14,9 @@ public class PlantSpreadThread
     private int GRID_CELL_SIZE;
     private int TickCount;
     private SpriteFont _foodFont;
-    private const int MAX_PLANTS_PER_GRIDSPACE = 4;
-    private const double MAX_PLANT_DENSITY = 0.6;
+    private const int MAX_PLANTS_PER_GRIDSPACE = 6;
+    //private const int MAX_PLANT_GRIDRADIUS = 10;
+    private const double MAX_PLANT_DENSITY = 1;
 
     public PlantSpreadThread(GameData sharedGameData, Random sharedRand, int sharedGridCellSize)
     {
@@ -92,6 +93,52 @@ public class PlantSpreadThread
                                                 }
                                             }
 
+                                            //Filter the list based on Spawn direction preferences
+                                            if (!_gameData.Plants[i].NoHorizontalSaplingPreference || !_gameData.Plants[i].NoVerticalSaplingPreference)
+                                            {
+                                                List<int> indexRemoveList = new List<int>();
+                                                for (int k = 0; k < potentialSpawnLocations.Count; k++)
+                                                {
+                                                    bool isNorth = (_gameData.Plants[i].Position.Y < potentialSpawnLocations[k].Y);
+                                                    bool isWest = (_gameData.Plants[i].Position.X > potentialSpawnLocations[k].X);
+
+                                                    if (!_gameData.Plants[i].NoVerticalSaplingPreference)
+                                                    {
+                                                        if (_gameData.Plants[i].PreferSaplingNorth && !isNorth)
+                                                        {
+                                                            indexRemoveList.Add(k);
+                                                        }
+                                                        else if (!_gameData.Plants[i].PreferSaplingNorth && isNorth)
+                                                        {
+                                                            indexRemoveList.Add(k);
+                                                        }
+                                                    }
+                                                    if (!_gameData.Plants[i].NoHorizontalSaplingPreference)
+                                                    {
+                                                        if (_gameData.Plants[i].PreferSaplingWest && !isWest)
+                                                        {
+                                                            indexRemoveList.Add(k);
+                                                        }
+                                                        else if (!_gameData.Plants[i].PreferSaplingWest && isWest)
+                                                        {
+                                                            indexRemoveList.Add(k);
+                                                        }
+                                                    }
+                                                }
+
+                                                if (indexRemoveList.Count < potentialSpawnLocations.Count)
+                                                {
+                                                    for (int k = potentialSpawnLocations.Count - 1; k >= 0; k--)
+                                                    {
+                                                        foreach (int irl in indexRemoveList)
+                                                        {
+                                                            if (k == irl)
+                                                                potentialSpawnLocations.RemoveAt(k);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
                                             //Pick random spawns from the spawnlocation list
                                             for (int k = 0; k < _gameData.Plants[i].NumberOfSaplings; k++)
                                             {
@@ -153,15 +200,16 @@ public class PlantSpreadThread
                 else
                 {
                     //Validate that a plant is allowed to spread. Check The surrounding grid to see if there are too many plants already. This simulates running out of space for sunlight and water
-
                     try
                     {
                         for (int i = _gameData.Plants.Count - 1; i >= 0; i--)
                         {
-                            foreach(Point p in _gameData.Plants[i].GridPositions)
+                            _gameData.Plants[i].AllowedToSpread = false;
+
+                            foreach (Point p in _gameData.Plants[i].GridPositions)
                             {
-                                Point topLeft = new Point(p.X - 5, p.Y - 5);
-                                Point bottomRight = new Point(p.X + 5, p.Y + 5);
+                                Point topLeft = new Point(p.X - _gameData.Plants[i].PlantSpreadWestCheckRadius, p.Y - _gameData.Plants[i].PlantSpreadNorthCheckRadius);
+                                Point bottomRight = new Point(p.X + _gameData.Plants[i].PlantSpreadEastCheckRadius, p.Y + _gameData.Plants[i].PlantSpreadSouthCheckRadius);
 
                                 if (topLeft.X < 0) topLeft.X = 0;
                                 if (topLeft.X > _gameData.MapGridData.GetLength(0)) topLeft.X = _gameData.MapGridData.GetLength(0);
@@ -174,22 +222,92 @@ public class PlantSpreadThread
                                 if (bottomRight.Y > _gameData.MapGridData.GetLength(1)) bottomRight.Y = _gameData.MapGridData.GetLength(1);
 
                                 int plantCount = 0;
+                                int plantCountNorth = 0;
+                                int plantCountSouth = 0;
+                                int plantCountWest = 0;
+                                int plantCountEast = 0;
                                 int gridCount = 0;
+                                int gridCountNorth = 0;
+                                int gridCountSouth = 0;
+                                int gridCountWest = 0;
+                                int gridCountEast = 0;
                                 for (int j = topLeft.X; j < bottomRight.X; j++)
                                 {
                                     for (int k = topLeft.Y; k < bottomRight.Y; k++)
                                     {
-                                        plantCount += _gameData.MapGridData[j, k].Plants.Where(t => !t.MarkForDelete).Count();
+                                        int tmpCount = _gameData.MapGridData[j, k].Plants.Where(t => !t.MarkForDelete).Count();
+                                        plantCount += tmpCount;
                                         gridCount++;
+
+                                        if (k > p.Y)
+                                        {
+                                            plantCountNorth += tmpCount;
+                                            gridCountNorth++;
+                                        }
+                                        else
+                                        {
+                                            plantCountSouth += tmpCount;
+                                            gridCountSouth++;
+                                        }
+                                        if (j > p.X)
+                                        {
+                                            plantCountEast += tmpCount;
+                                            gridCountEast++;
+                                        }
+                                        else
+                                        {
+                                            plantCountWest += tmpCount;
+                                            gridCountWest++;
+                                        }
                                     }
                                 }
 
+                                //int maxGridCount = (MAX_PLANT_GRIDRADIUS * 2) * (MAX_PLANT_GRIDRADIUS * 2);
+                                //int projectedMaxPlants = maxGridCount * MAX_PLANTS_PER_GRIDSPACE;
                                 int projectedMaxPlants = gridCount * MAX_PLANTS_PER_GRIDSPACE;
-                                double plantDensity = plantCount / projectedMaxPlants;
+                                double plantDensity = (double)plantCount / (double)projectedMaxPlants;
 
-                                if (plantDensity > MAX_PLANT_DENSITY)
+                                if (plantDensity < MAX_PLANT_DENSITY)
                                 {
-                                    _gameData.Plants[i].AllowedToSpread = false;
+                                    _gameData.Plants[i].AllowedToSpread = true;
+
+                                    double northRatio = (double)plantCountNorth / (double)gridCountNorth;
+                                    double southRatio = (double)plantCountSouth / (double)gridCountSouth;
+                                    double eastRatio = (double)plantCountEast / (double)gridCountEast;
+                                    double westRatio = (double)plantCountWest / (double)gridCountWest;
+
+                                    if (northRatio == southRatio)
+                                    {
+                                        _gameData.Plants[i].NoVerticalSaplingPreference = true;
+                                        _gameData.Plants[i].PreferSaplingNorth = false;
+                                    }
+                                    else if (northRatio > southRatio)
+                                    {
+                                        _gameData.Plants[i].NoVerticalSaplingPreference = false;
+                                        _gameData.Plants[i].PreferSaplingNorth = false;
+                                    }
+                                    else
+                                    {
+                                        _gameData.Plants[i].NoVerticalSaplingPreference = false;
+                                        _gameData.Plants[i].PreferSaplingNorth = true;
+                                    }
+
+                                    if (eastRatio == westRatio)
+                                    {
+                                        _gameData.Plants[i].NoHorizontalSaplingPreference = true;
+                                        _gameData.Plants[i].PreferSaplingWest = false;
+                                    }
+                                    else if (westRatio > eastRatio)
+                                    {
+                                        _gameData.Plants[i].NoHorizontalSaplingPreference = false;
+                                        _gameData.Plants[i].PreferSaplingWest = false;
+                                    }
+                                    else
+                                    {
+                                        _gameData.Plants[i].NoHorizontalSaplingPreference = false;
+                                        _gameData.Plants[i].PreferSaplingWest = true;
+                                    }
+
                                     break;
                                 }
                             }

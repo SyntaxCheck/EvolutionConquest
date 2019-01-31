@@ -107,7 +107,7 @@ namespace EvolutionConquest
         private const float HUD_ICON_SCALE = 0.375f;
         private const int EVENT_LOG_DISPLAY_COUNT = 38;
         //GamePlay feature toggles
-        private const bool ENABLE_GAME_RESETS = true;
+        private const bool ENABLE_GAME_RESETS = false;
         private const bool ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH = false;
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
@@ -193,12 +193,21 @@ namespace EvolutionConquest
             _closeButton = Content.Load<Texture2D>("Close");
             _defaultButton = Content.Load<Texture2D>("Default");
 
+            //Regular Tree
             Texture2D tree0 = Content.Load<Texture2D>("T0");
             Texture2D tree1 = Content.Load<Texture2D>("T1");
             Texture2D tree2 = Content.Load<Texture2D>("T2");
             Texture2D tree3 = Content.Load<Texture2D>("T3");
             Texture2D tree4 = Content.Load<Texture2D>("T4");
             Texture2D tree5 = Content.Load<Texture2D>("T5");
+            
+            //Super Tree
+            Texture2D superTree0 = Content.Load<Texture2D>("TS0");
+            Texture2D superTree1 = Content.Load<Texture2D>("TS1");
+            Texture2D superTree2 = Content.Load<Texture2D>("TS2");
+            Texture2D superTree3 = Content.Load<Texture2D>("TS3");
+            Texture2D superTree4 = Content.Load<Texture2D>("TS4");
+            Texture2D superTree5 = Content.Load<Texture2D>("TS5");
 
             _textureList.Add(new TextureContainer() { Name = "T0", Texture = tree0 });
             _textureList.Add(new TextureContainer() { Name = "T1", Texture = tree1 });
@@ -206,6 +215,12 @@ namespace EvolutionConquest
             _textureList.Add(new TextureContainer() { Name = "T3", Texture = tree3 });
             _textureList.Add(new TextureContainer() { Name = "T4", Texture = tree4 });
             _textureList.Add(new TextureContainer() { Name = "T5", Texture = tree5 });
+            _textureList.Add(new TextureContainer() { Name = "TS0", Texture = superTree0 });
+            _textureList.Add(new TextureContainer() { Name = "TS1", Texture = superTree1 });
+            _textureList.Add(new TextureContainer() { Name = "TS2", Texture = superTree2 });
+            _textureList.Add(new TextureContainer() { Name = "TS3", Texture = superTree3 });
+            _textureList.Add(new TextureContainer() { Name = "TS4", Texture = superTree4 });
+            _textureList.Add(new TextureContainer() { Name = "TS5", Texture = superTree5 });
 
             _foodFont = Content.Load<SpriteFont>("FoodFont");
             _gameData.DebugFont = _foodFont;
