@@ -181,8 +181,8 @@ public class Plant : SpriteBase
     {
         TicksPerSecond = gameData.TicksPerSecond;
         TexturesList = textureList;
-        Texture = TexturesList.First(t => t.Name == "T1").Texture;
         CurrentTexture = "T1";
+        Texture = TexturesList.First(t => t.Name == CurrentTexture).Texture;
         Lifespan = rand.Next(4750, 6000);
         FoodAmount = 5;
         FoodAmountCap = rand.Next(100, 500);
@@ -191,7 +191,8 @@ public class Plant : SpriteBase
         FoodStrength = 10;
         EatCooldownTicks = rand.Next(100, 200);
         NumberOfSaplings = rand.Next(0, 2);
-        SpreadCooldownTicks = rand.Next(1700, 2200);
+        SpreadCooldownTicks = rand.Next(2000, 2200);
+        //SpreadCooldownTicks = rand.Next(1600, 1600);
         GrowCooldownTicks = rand.Next(350, 450);
         GrowDelayOnEatTicks = rand.Next(50, 60);
         FoodType = 0; //NOT IMPLEMENTED
@@ -204,7 +205,7 @@ public class Plant : SpriteBase
         if (SuperTree)
         {
             CurrentTexture = "TS1";
-            Texture = TexturesList.First(t => t.Name == "TS1").Texture;
+            Texture = TexturesList.First(t => t.Name == CurrentTexture).Texture;
             if (NumberOfSaplings == 0)
                 NumberOfSaplings = 1;
         }
@@ -252,8 +253,8 @@ public class Plant : SpriteBase
         babyPlant.ClimateHeightPercent = ClimateHeightPercent;
         babyPlant.TicksPerSecond = TicksPerSecond;
         babyPlant.TexturesList = TexturesList;
-        babyPlant.Texture = TexturesList.First(t => t.Name == "T0").Texture;
         babyPlant.CurrentTexture = "T0";
+        babyPlant.Texture = TexturesList.First(t => t.Name == babyPlant.CurrentTexture).Texture;
         babyPlant.Lifespan = Lifespan + Mutate(rand, FoodAmountCap, 50);
         babyPlant.FoodAmount = 0;
         babyPlant.FoodAmountCap = FoodAmountCap + Mutate(rand, FoodAmountCap, 2);
@@ -271,11 +272,11 @@ public class Plant : SpriteBase
         babyPlant.PlantSpreadSouthCheckRadius = PlantSpreadSouthCheckRadius + MutateSpreadRadius(rand, PlantSpreadSouthCheckRadius, 1, 10);
         babyPlant.PlantSpreadEastCheckRadius = PlantSpreadEastCheckRadius + MutateSpreadRadius(rand, PlantSpreadEastCheckRadius, 1, 10);
         babyPlant.PlantSpreadWestCheckRadius = PlantSpreadWestCheckRadius + MutateSpreadRadius(rand, PlantSpreadWestCheckRadius, 1, 10);
-        babyPlant.SuperTree = (rand.Next(0, 1000) > 990); //1% chance for a new SuperTree baby
+        babyPlant.SuperTree = (rand.Next(0, 10000) > 9990); //0.001% chance for a new SuperTree baby
         if (babyPlant.SuperTree)
         {
             babyPlant.CurrentTexture = "TS0";
-            babyPlant.Texture = TexturesList.First(t => t.Name == "TS0").Texture;
+            babyPlant.Texture = TexturesList.First(t => t.Name == babyPlant.CurrentTexture).Texture;
             if (babyPlant.NumberOfSaplings == 0)
                 babyPlant.NumberOfSaplings = 1;
         }
@@ -424,7 +425,7 @@ public class Plant : SpriteBase
         //Do not allow mutations to result in a value below 0;
         if (baseValue - mutationValue > 0)
         {
-            if (rand.Next(0, 100) > 50) //50% Chance to mutate positively
+            if (rand.Next(0, 100000) > 50000) //50% Chance to mutate positively
             {
                 mutationValue = mutationValue * -1;
             }
@@ -433,7 +434,7 @@ public class Plant : SpriteBase
         if (rand.Next(0, 100) > (100 - chanceToMutate)) //Chance to do a mutation
             return mutationValue;
         else
-            return baseValue;
+            return 0;
     }
     private bool IsInBounds(Vector2 vec)
     {

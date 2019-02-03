@@ -15,8 +15,7 @@ public class PlantSpreadThread
     private int TickCount;
     private SpriteFont _foodFont;
     private const int MAX_PLANTS_PER_GRIDSPACE = 6;
-    //private const int MAX_PLANT_GRIDRADIUS = 10;
-    private const double MAX_PLANT_DENSITY = 1;
+    private const double MAX_PLANT_DENSITY = 0.4;
 
     public PlantSpreadThread(GameData sharedGameData, Random sharedRand, int sharedGridCellSize)
     {
@@ -126,14 +125,20 @@ public class PlantSpreadThread
                                                     }
                                                 }
 
-                                                if (indexRemoveList.Count < potentialSpawnLocations.Count)
+                                                //Get rid of duplicates
+                                                indexRemoveList = indexRemoveList.Distinct().ToList();
+                                                //Do not delete more spawn locations than we have and make sure to have enough spawn loactions for all the saplings
+                                                if (indexRemoveList.Count < (potentialSpawnLocations.Count - _gameData.Plants[i].NumberOfSaplings))
                                                 {
                                                     for (int k = potentialSpawnLocations.Count - 1; k >= 0; k--)
                                                     {
                                                         foreach (int irl in indexRemoveList)
                                                         {
                                                             if (k == irl)
+                                                            {
                                                                 potentialSpawnLocations.RemoveAt(k);
+                                                                break;
+                                                            }
                                                         }
                                                     }
                                                 }
