@@ -2031,7 +2031,7 @@ namespace EvolutionConquest
                 float highEndVal = 2f;
 
                 //Randomize the settings file
-                //_gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
+                _gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
                 _gameData.Settings.TicksUntilFoodUpgradeStarts = _rand.Next((int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * lowEndVal), (int)(_gameData.Settings.TicksUntilFoodUpgradeStarts * highEndVal));
                 _gameData.Settings.TicksBetweenFoodUpgrades = _rand.Next((int)(_gameData.Settings.TicksBetweenFoodUpgrades * lowEndVal), (int)(_gameData.Settings.TicksBetweenFoodUpgrades * highEndVal));
                 _gameData.Settings.StartingPlantRatio = _rand.Next((int)(_gameData.Settings.StartingPlantRatio * lowEndVal), (int)(_gameData.Settings.StartingPlantRatio * highEndVal));
@@ -3727,25 +3727,26 @@ namespace EvolutionConquest
         }
         private double CalculateFitness()
         {
+            double maxScore = 1000d;
             double score = 0d;
 
             //Herbavore only
             if (_gameData.MapStatistics.AliveCreatures >= 1000 && _gameData.MapStatistics.AliveCreatures <= 3000)
             {
-                score = 1000d;
+                score = maxScore;
             }
             else if (_gameData.MapStatistics.AliveCreatures < 1000)
             {
-                score = 1000d - (1000 - _gameData.MapStatistics.AliveCreatures);
+                score = maxScore - (1000 - _gameData.MapStatistics.AliveCreatures);
             }
             else if (_gameData.MapStatistics.AliveCreatures > 3000)
             {
-                score = 1000d - (_gameData.MapStatistics.AliveCreatures - 3000);
+                score = maxScore - (_gameData.MapStatistics.AliveCreatures - 3000);
             }
 
             if (score < 0)
                 score = 0;
-            else if (score > 100)
+            else if (score > maxScore)
                 score = 1000;
 
             ////Full game check
