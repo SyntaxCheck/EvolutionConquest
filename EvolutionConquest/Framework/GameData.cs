@@ -84,6 +84,8 @@ public class GameData
     public LockClass LockChart { get; set; } //Datatype is string only because we need a reference datatype to lock
     public int TotalCreatureCleanupSkips { get; set; }
     public bool TickElapsedPlants { get; set; }
+    public List<double> FitnessScores { get; set; }
+    public List<int> FitnessScoresTotalLiveCreatures { get; set; }
     public double TotalFitnessPoints { get; set; }
     public int NumberOfFitnessCalculations { get; set; }
     public double ElapsedTimeSinceFitnessCalculation { get; set; }
@@ -110,6 +112,8 @@ public class GameData
         Eggs = new List<Egg>();
         Food = new List<Food>();
         Plants = new List<Plant>();
+        FitnessScores = new List<double>();
+        FitnessScoresTotalLiveCreatures = new List<int>();
         Focus = null; //Init the focus to null to not follow any creatures
         FocusIndex = -1;
         nextSpeciesId = 0;

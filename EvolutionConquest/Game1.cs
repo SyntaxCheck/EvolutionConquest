@@ -774,6 +774,10 @@ namespace EvolutionConquest
                 _gameData.ElapsedTimeSinceFitnessCalculation -= GameData.SECONDS_BETWEEN_FITNESS_CALC;
                 _gameData.TotalFitnessPoints += fitnessScore;
                 _gameData.NumberOfFitnessCalculations++;
+
+                //Update lists
+                _gameData.FitnessScores.Add(fitnessScore);
+                _gameData.FitnessScoresTotalLiveCreatures.Add(_gameData.Creatures.Where(t => t.IsAlive).Count());
             }
 
             _elapsedTimeSinceNewCreatureSpawned += gameTime.ElapsedGameTime.TotalMinutes;
@@ -1222,6 +1226,11 @@ namespace EvolutionConquest
                 List<string> csvFitnessFile = BuildFitnessFile();
                 System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "FitnessFile.csv"), csvFitnessFile.ToArray());
                 csvFitnessFile = null; //Let GC cleanup the RAM before we build the next list
+
+                //Write Fitness file lists
+                List<string> csvFitnessFileLists = BuildFitnessListsFile();
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "FitnessFileLists.csv"), csvFitnessFileLists.ToArray());
+                csvFitnessFileLists = null; //Let GC cleanup the RAM before we build the next list
 
                 //Write Debug file
                 List<string> csvDebugTimerFile = BuildDebugTimerList();
@@ -3509,6 +3518,30 @@ namespace EvolutionConquest
             builtList.Add("Percent Scavenger," + _gameData.MapStatistics.PercentScavenger.ToString());
             builtList.Add("Percent Omnivore," + _gameData.MapStatistics.PercentOmnivore.ToString());
             builtList.Add("Unique Species," + _gameData.MapStatistics.UniqueSpecies.ToString());
+
+            return builtList;
+        }
+        private List<string> BuildFitnessListsFile()
+        {
+            List<string> builtList = new List<string>();
+
+            builtList.Add("Fitness Value,Total Creatures");
+            for (int i = 0; i < _gameData.FitnessScores.Count(); i++)
+            {
+                string row = String.Empty;
+
+                row = _gameData.FitnessScores[i].ToString() + ",";
+                if ((_gameData.FitnessScoresTotalLiveCreatures.Count() - 1) >= i)
+                {
+                    row += _gameData.FitnessScoresTotalLiveCreatures[i].ToString();
+                }
+                else
+                {
+                    row += "N/A";
+                }
+
+                builtList.Add(row);
+            }
 
             return builtList;
         }
