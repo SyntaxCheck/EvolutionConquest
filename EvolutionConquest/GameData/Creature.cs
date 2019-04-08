@@ -571,7 +571,8 @@ public class Creature : SpriteBase
         baby.TicksSinceLastDigestedFood = 0;
         baby.TicksSinceLastEgg = 0;
         baby.ElapsedTicks = 0;
-        baby.Energy = gameData.CreatureSettings.StartingEnergy + (GetCreatureLevel() * 10); //No mutation chance on energy
+        //baby.Energy = gameData.CreatureSettings.StartingEnergy + (GetCreatureLevel() * 10); //No mutation chance on energy
+        baby.Energy = gameData.CreatureSettings.StartingEnergy; //No mutation chance on energy
         baby.TicksSinceLastVisionCheck = 0;
         baby.TicksBetweenVisionChecks = TicksBetweenVisionChecks;
         baby.TicksInColdClimate = 0;
