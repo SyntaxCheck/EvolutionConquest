@@ -112,6 +112,8 @@ namespace EvolutionConquest
         //GamePlay feature toggles
         private const bool ENABLE_GAME_RESETS = true;
         private const bool ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH = true;
+        private const bool ENABLE_GAME_RESETS_ON_TOO_MANY_CREATURES = true;
+        private const int MAX_CREATURES = 10000;
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
         private const bool ENABLE_ENERGY_DEATH = true;
@@ -491,7 +493,9 @@ namespace EvolutionConquest
                     _gameData.BuildSettingsPanel = false;
                 }
 
-                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER && (!ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH || _gameData.Creatures.Where(t => t.IsAlive).Count() > 0))
+                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER && 
+                    (!ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH || _gameData.Creatures.Where(t => t.IsAlive).Count() > 0) &&
+                    (!ENABLE_GAME_RESETS_ON_TOO_MANY_CREATURES || _gameData.Creatures.Where(t => t.IsAlive).Count() < MAX_CREATURES))
                 {
                     _tickSeconds = 1f / TICKS_PER_SECOND;
 
