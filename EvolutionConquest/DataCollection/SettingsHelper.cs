@@ -94,12 +94,11 @@ public class SettingsHelper
         settingsIn.WorldSize = 4000;
         settingsIn.ClimateHeightPercent = 10;
         settingsIn.StartingFoodRatio = 500f;
-        settingsIn.FoodGenerationValue = 10f;
+        settingsIn.FoodGenerationValue = 5f;
         settingsIn.TicksUntilFoodUpgradeStarts = 1800f;
         settingsIn.TicksBetweenFoodUpgrades = 150f;
         settingsIn.StartingPlantRatio = 200f;
-        //settingsIn.StartingCreatureRatio = 10f;
-        settingsIn.StartingCreatureRatio = 25f;
+        settingsIn.StartingCreatureRatio = 300f;
         settingsIn.FoodUpgradeAmount = 1;
         settingsIn.FoodUpgradeChancePercent = 20;
         settingsIn.MaxFoodLevel = 50;
@@ -111,29 +110,29 @@ public class SettingsHelper
     }
     public static void SetDefaultCreature(ref CreatureSettings settingsIn)
     {
-        settingsIn.StartingEggIntervalMin = 40;
-        settingsIn.StartingEggIntervalMax = 50;
-        settingsIn.StartingEggIncubationMin = 40;
+        settingsIn.StartingEggIntervalMin = 55;
+        settingsIn.StartingEggIntervalMax = 60;
+        settingsIn.StartingEggIncubationMin = 60;
         settingsIn.StartingEggIncubationMax = 80;
         settingsIn.StartingFoodDigestionMin = 5;
         settingsIn.StartingFoodDigestionMax = 25;
         settingsIn.StartingSpeedMin = 12;
         settingsIn.StartingSpeedMax = 20;
-        settingsIn.StartingLifespanMin = 100;
+        settingsIn.StartingLifespanMin = 105;
         settingsIn.StartingLifespanMax = 120;
-        settingsIn.StartingHerbavoreLevelMin = 0;
+        settingsIn.StartingHerbavoreLevelMin = 1;
         settingsIn.StartingHerbavoreLevelMax = 2;
         settingsIn.StartingCarnivoreLevelMin = 0;
-        settingsIn.StartingCarnivoreLevelMax = 2;
+        settingsIn.StartingCarnivoreLevelMax = 0;
         settingsIn.StartingScavengerLevelMin = 0;
-        settingsIn.StartingScavengerLevelMax = 2;
+        settingsIn.StartingScavengerLevelMax = 0;
         settingsIn.StartingOmnivoreLevelMin = 0;
-        settingsIn.StartingOmnivoreLevelMax = 2;
+        settingsIn.StartingOmnivoreLevelMax = 0;
         settingsIn.StartingColdToleranceMin = 0;
         settingsIn.StartingColdToleranceMax = 10;
         settingsIn.StartingHotToleranceMin = 0;
         settingsIn.StartingHotToleranceMax = 10;
-        settingsIn.StartingEnergy = 425;
+        settingsIn.StartingEnergy = 380;
     }
     public static void SetDefaultMutation(ref MutationSettings settingsIn)
     {
