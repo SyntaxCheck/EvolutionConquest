@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 
 public class Creature : SpriteBase
 {
+    private const bool NO_CREATURE_TYPE_CHANGING = true; //Lock the creature type at birth. Can herbavores mutate into carnivores
+
     private Vector2 _direction;
     private float _rotation;
     private float _undigestedFood;
@@ -17,6 +19,7 @@ public class Creature : SpriteBase
     private float _foodDigestion;
     private float _lifespan;
     private float _eggInterval;
+    private float _eggIncubation;
 
     /// <summary>
     /// Adding new Properties make sure to Add to the following: Init, LayEgg, IsSameAs, ZeroOutNegativeValues
@@ -147,11 +150,34 @@ public class Creature : SpriteBase
         set
         {
             _eggInterval = value;
-            EggIntervalActual = _eggInterval / (30 / TicksPerSecond);
+
+            //Bonus interval time for the creatures complexity
+            EggIntervalActual = _eggInterval + (GetCreatureLevel() * 10);
+            EggIntervalActual += (Sight * 10);
+            EggIntervalActual += EggCamo;
+
+            EggIntervalActual = (int)Math.Ceiling(EggIntervalActual) / (30 / TicksPerSecond);
         }
     } //How often an egg can be output
     public float EggIntervalActual { get; set; } //How often an egg can be output adjusted for current tick rate
-    public float EggIncubation { get; set; } //How long it takes for the egg to hatch once created
+    public float EggIncubation
+    {
+        get
+        {
+            return _eggIncubation;
+        }
+        set
+        {
+            _eggIncubation = value;
+
+            //Bonus incubation time for the creatures complexity
+            EggIncubationActual = _eggIncubation + (GetCreatureLevel() * 10);
+            EggIncubationActual += (Sight * 10);
+            EggIncubationActual += EggCamo;
+
+            EggIncubationActual = (int)Math.Ceiling(EggIncubationActual) / (30 / TicksPerSecond);
+        }
+    } //How long it takes for the egg to hatch once created
     public float EggIncubationActual { get; set; } //This is calculated based on their species level, if the creature is a herbavore add Herbavore * 10
     public float EggCamo { get; set; } //How well the egg is hidden from Scavengers
     public List<int> InvisibleEggs { get; set; }
@@ -276,6 +302,18 @@ public class Creature : SpriteBase
         BabySpeciesStrainCounter = "A";
         Generation = 0;
         Rotation = MathHelper.ToRadians(rand.Next(0, 360));
+        Herbavore = rand.Next((int)gameData.CreatureSettings.StartingHerbavoreLevelMin, (int)gameData.CreatureSettings.StartingHerbavoreLevelMax);
+        Carnivore = rand.Next((int)gameData.CreatureSettings.StartingCarnivoreLevelMin, (int)gameData.CreatureSettings.StartingCarnivoreLevelMax);
+        Scavenger = rand.Next((int)gameData.CreatureSettings.StartingScavengerLevelMin, (int)gameData.CreatureSettings.StartingScavengerLevelMax);
+        Omnivore = rand.Next((int)gameData.CreatureSettings.StartingOmnivoreLevelMin, (int)gameData.CreatureSettings.StartingOmnivoreLevelMax);
+
+        bool isHerb, isCarn, isScav, isOmni;
+        DetermineCreatureType(Herbavore, Carnivore, Scavenger, Omnivore, out isHerb, out isCarn, out isScav, out isOmni);
+        IsHerbavore = isHerb;
+        IsCarnivore = isCarn;
+        IsScavenger = isScav;
+        IsOmnivore = isOmni;
+
         UndigestedFood = 0;
         DigestedFood = 0;
         FoodDigestion = rand.Next((int)(gameData.CreatureSettings.StartingFoodDigestionMin * 10f), (int)(gameData.CreatureSettings.StartingFoodDigestionMax * 10f));
@@ -295,17 +333,12 @@ public class Creature : SpriteBase
         TicksSinceLastVisionCheck = 0;
         TicksBetweenVisionChecks = (int)Math.Ceiling(TicksPerSecond / 2.0);
         Attraction = 0;
-        Herbavore = rand.Next((int)gameData.CreatureSettings.StartingHerbavoreLevelMin, (int)gameData.CreatureSettings.StartingHerbavoreLevelMax);
-        Carnivore = rand.Next((int)gameData.CreatureSettings.StartingCarnivoreLevelMin, (int)gameData.CreatureSettings.StartingCarnivoreLevelMax);
-        Scavenger = rand.Next((int)gameData.CreatureSettings.StartingScavengerLevelMin, (int)gameData.CreatureSettings.StartingScavengerLevelMax);
-        Omnivore = rand.Next((int)gameData.CreatureSettings.StartingOmnivoreLevelMin, (int)gameData.CreatureSettings.StartingOmnivoreLevelMax);
         Camo = 0;
         Cloning = 0;
         ColdClimateTolerance = rand.Next((int)gameData.CreatureSettings.StartingColdToleranceMin, (int)gameData.CreatureSettings.StartingColdToleranceMax);
         HotClimateTolerance = rand.Next((int)gameData.CreatureSettings.StartingHotToleranceMin, (int)gameData.CreatureSettings.StartingHotToleranceMax);
         TicksInColdClimate = 0;
         TicksInHotClimate = 0;
-        EggIncubationActual = EggIncubation + (Herbavore * 10);
         FoodTypeBlue = 0;
         FoodTypeRed = 0;
         FoodTypeGreen = 0;
@@ -326,13 +359,6 @@ public class Creature : SpriteBase
                 FoodTypeGreen = 5;
                 break;
         }
-
-        bool isHerb, isCarn, isScav, isOmni;
-        DetermineCreatureType(Herbavore, Carnivore, Scavenger, Omnivore, out isHerb, out isCarn, out isScav, out isOmni);
-        IsHerbavore = isHerb;
-        IsCarnivore = isCarn;
-        IsScavenger = isScav;
-        IsOmnivore = isOmni;
 
         SetCreatureColor();
 
@@ -447,18 +473,74 @@ public class Creature : SpriteBase
         Egg egg = new Egg();
         Creature baby = new Creature();
 
-        //No boost for Herbavore since all creatures start out as Herbavore
-        if (IsCarnivore)
+        if (NO_CREATURE_TYPE_CHANGING)
         {
-            carnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Carnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            if (IsHerbavore)
+            {
+                baby.Herbavore = Herbavore + Mutation(rand, gameData.MutationSettings.Herbavore, gameData);
+            }
+            else if (IsCarnivore)
+            {
+                baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore, gameData);
+            }
+            else if (IsScavenger)
+            {
+                baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger, gameData);
+            }
+            else if (IsOmnivore)
+            {
+                baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore, gameData);
+            }
         }
-        else if (IsScavenger)
+        else
         {
-            scavengerMutationBonus = (int)Math.Round(gameData.MutationSettings.Scavenger * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            //No boost for Herbavore since all creatures start out as Herbavore
+            if (IsCarnivore)
+            {
+                carnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Carnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            }
+            else if (IsScavenger)
+            {
+                scavengerMutationBonus = (int)Math.Round(gameData.MutationSettings.Scavenger * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            }
+            else if (IsOmnivore)
+            {
+                omnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Omnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            }
+
+            baby.Herbavore = Herbavore + Mutation(rand, gameData.MutationSettings.Herbavore, gameData);
+            baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore + carnivoreMutationBonus, gameData);
+            baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore + omnivoreMutationBonus, gameData);
+            baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger + scavengerMutationBonus, gameData);
         }
-        else if (IsOmnivore)
+
+        if (baby.Herbavore >= baby.Carnivore && baby.Herbavore >= baby.Scavenger && baby.Herbavore >= baby.Omnivore)
         {
-            omnivoreMutationBonus = (int)Math.Round(gameData.MutationSettings.Omnivore * (gameData.MutationSettings.MutationBonusPercent / 100f), 0);
+            baby.IsHerbavore = true;
+            baby.IsCarnivore = false;
+            baby.IsScavenger = false;
+            baby.IsOmnivore = false;
+        }
+        else if (baby.Carnivore >= baby.Herbavore && baby.Carnivore >= baby.Scavenger && baby.Carnivore >= baby.Omnivore)
+        {
+            baby.IsHerbavore = false;
+            baby.IsCarnivore = true;
+            baby.IsScavenger = false;
+            baby.IsOmnivore = false;
+        }
+        else if (baby.Scavenger >= baby.Herbavore && baby.Scavenger >= baby.Carnivore && baby.Scavenger >= baby.Omnivore)
+        {
+            baby.IsHerbavore = false;
+            baby.IsCarnivore = false;
+            baby.IsScavenger = true;
+            baby.IsOmnivore = false;
+        }
+        else if (baby.Omnivore >= baby.Herbavore && baby.Omnivore >= baby.Carnivore && baby.Omnivore >= baby.Scavenger)
+        {
+            baby.IsHerbavore = true;
+            baby.IsCarnivore = true;
+            baby.IsScavenger = false;
+            baby.IsOmnivore = true;
         }
 
         TicksSinceLastEgg = 0;
@@ -514,43 +596,6 @@ public class Creature : SpriteBase
         baby.Cloning = Cloning + Mutation(rand, gameData.MutationSettings.Cloning, gameData);
         baby.ColdClimateTolerance = _coldClimateTolerance + Mutation(rand, gameData.MutationSettings.ColdClimateTolerance - _hotClimateTolerance, gameData);
         baby.HotClimateTolerance = _hotClimateTolerance + Mutation(rand, gameData.MutationSettings.HotClimateTolerance - _coldClimateTolerance, gameData);
-        baby.Herbavore = Herbavore + Mutation(rand, gameData.MutationSettings.Herbavore, gameData);
-        baby.Carnivore = Carnivore + Mutation(rand, gameData.MutationSettings.Carnivore + carnivoreMutationBonus, gameData);
-        baby.Omnivore = Omnivore + Mutation(rand, gameData.MutationSettings.Omnivore + omnivoreMutationBonus, gameData);
-        baby.Scavenger = Scavenger + Mutation(rand, gameData.MutationSettings.Scavenger + scavengerMutationBonus, gameData);
-
-        if (baby.Herbavore >= baby.Carnivore && baby.Herbavore >= baby.Scavenger && baby.Herbavore >= baby.Omnivore)
-        {
-            baby.IsHerbavore = true;
-            baby.IsCarnivore = false;
-            baby.IsScavenger = false;
-            baby.IsOmnivore = false;
-            baby.EggIncubationActual = baby.EggIncubation + (baby.Herbavore * 10);
-        }
-        else if (baby.Carnivore >= baby.Herbavore && baby.Carnivore >= baby.Scavenger && baby.Carnivore >= baby.Omnivore)
-        {
-            baby.IsHerbavore = false;
-            baby.IsCarnivore = true;
-            baby.IsScavenger = false;
-            baby.IsOmnivore = false;
-            baby.EggIncubationActual = baby.EggIncubation + (baby.Carnivore * 10);
-        }
-        else if (baby.Scavenger >= baby.Herbavore && baby.Scavenger >= baby.Carnivore && baby.Scavenger >= baby.Omnivore)
-        {
-            baby.IsHerbavore = false;
-            baby.IsCarnivore = false;
-            baby.IsScavenger = true;
-            baby.IsOmnivore = false;
-            baby.EggIncubationActual = baby.EggIncubation + (baby.Scavenger * 10);
-        }
-        else if (baby.Omnivore >= baby.Herbavore && baby.Omnivore >= baby.Carnivore && baby.Omnivore >= baby.Scavenger)
-        {
-            baby.IsHerbavore = true;
-            baby.IsCarnivore = true;
-            baby.IsScavenger = false;
-            baby.IsOmnivore = true;
-            baby.EggIncubationActual = baby.EggIncubation + (baby.Omnivore * 10);
-        }
 
         baby.SetCreatureColor();
 

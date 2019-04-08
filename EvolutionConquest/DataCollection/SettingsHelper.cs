@@ -92,14 +92,14 @@ public class SettingsHelper
     public static void SetDefaultWorld(ref GameSettings settingsIn)
     {
         settingsIn.WorldSize = 4000;
-        settingsIn.ClimateHeightPercent = 20;
-        settingsIn.StartingFoodRatio = 400f;
-        settingsIn.FoodGenerationValue = 5f;
+        settingsIn.ClimateHeightPercent = 10;
+        settingsIn.StartingFoodRatio = 500f;
+        settingsIn.FoodGenerationValue = 10f;
         settingsIn.TicksUntilFoodUpgradeStarts = 1800f;
         settingsIn.TicksBetweenFoodUpgrades = 150f;
-        settingsIn.StartingPlantRatio = 164f;
+        settingsIn.StartingPlantRatio = 200f;
         //settingsIn.StartingCreatureRatio = 10f;
-        settingsIn.StartingCreatureRatio = 18f;
+        settingsIn.StartingCreatureRatio = 25f;
         settingsIn.FoodUpgradeAmount = 1;
         settingsIn.FoodUpgradeChancePercent = 20;
         settingsIn.MaxFoodLevel = 50;
@@ -121,14 +121,14 @@ public class SettingsHelper
         settingsIn.StartingSpeedMax = 20;
         settingsIn.StartingLifespanMin = 100;
         settingsIn.StartingLifespanMax = 120;
-        settingsIn.StartingHerbavoreLevelMin = 1;
+        settingsIn.StartingHerbavoreLevelMin = 0;
         settingsIn.StartingHerbavoreLevelMax = 2;
         settingsIn.StartingCarnivoreLevelMin = 0;
-        settingsIn.StartingCarnivoreLevelMax = 0;
+        settingsIn.StartingCarnivoreLevelMax = 2;
         settingsIn.StartingScavengerLevelMin = 0;
-        settingsIn.StartingScavengerLevelMax = 0;
+        settingsIn.StartingScavengerLevelMax = 2;
         settingsIn.StartingOmnivoreLevelMin = 0;
-        settingsIn.StartingOmnivoreLevelMax = 0;
+        settingsIn.StartingOmnivoreLevelMax = 2;
         settingsIn.StartingColdToleranceMin = 0;
         settingsIn.StartingColdToleranceMax = 10;
         settingsIn.StartingHotToleranceMin = 0;

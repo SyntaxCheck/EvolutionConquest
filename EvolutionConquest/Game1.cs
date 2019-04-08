@@ -94,6 +94,7 @@ namespace EvolutionConquest
         private float _foodGenerationIntervalSeconds;
         private float _foodLifeSpan;
         private long _elapsedBorderCollisionTicks;
+        private double _elapsedTimeSinceNewCreatureSpawned;
         private TimeSpan _totalElapsedTime;
         //Constants
         private const int SESSION_NUMBER = 1;
@@ -106,9 +107,11 @@ namespace EvolutionConquest
         private const int GRID_CELL_SIZE = 50; //Seems to be the sweet spot for a 5,000 x 5,000 map based on the texture sizes we have so far
         private const float HUD_ICON_SCALE = 0.375f;
         private const int EVENT_LOG_DISPLAY_COUNT = 38;
+        private const float MINUTES_UNTIL_NEW_CREATURE_SPAWN = 1.0f;
+        private const int MINUTES_OF_FOREST_GROWTH_ON_START = 20;
         //GamePlay feature toggles
-        private const bool ENABLE_GAME_RESETS = false;
-        private const bool ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH = false;
+        private const bool ENABLE_GAME_RESETS = true;
+        private const bool ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH = true;
         private const bool ENABLE_DEBUG_DATA = false;
         private const bool ENABLE_FOOD_UPGRADES = true;
         private const bool ENABLE_ENERGY_DEATH = true;
@@ -240,9 +243,9 @@ namespace EvolutionConquest
 
             //_sessionID = SESSION_NUMBER;
             _sessionID = _rand.Next(0, int.MaxValue); //We could have just used the Seed since it is random but I might implement the ability to choose seed at a later time
-            //_rand = new Random(1);
-            _gameRandSeed = _rand.Next(0, int.MaxValue); //Use the initial random class to set a seed
-            _rand = new Random(_gameRandSeed); //Re-instantiate the _rand variable with our seed
+            _rand = new Random(1);
+            //_gameRandSeed = _rand.Next(0, int.MaxValue); //Use the initial random class to set a seed
+            //_rand = new Random(_gameRandSeed); //Re-instantiate the _rand variable with our seed
             _names = new Names();
             _creatureGenerator = new CreatureShapeGenerator();
             _foodGenerator = new FoodShapeGenerator();
@@ -297,26 +300,6 @@ namespace EvolutionConquest
                 }
             }
 
-            //Attempt to give starting creatures a better chance of finding food in the beginning to avoid large extinctions to open the game
-            //Load in random food
-            int amountOfFood = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / _foodTexture.Width) * (_gameData.Settings.StartingFoodRatio / 100000f));
-            //Spawn in fast despawning food
-            for (int i = 0; i < amountOfFood; i++)
-            {
-                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10)));
-            }
-            //Spawn in medium despawning food
-            for (int i = 0; i < amountOfFood; i++)
-            {
-                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4)));
-            }
-            //Spawn in food that does not despawn
-            for (int i = 0; i < amountOfFood / 2; i++)
-            {
-                //SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN - _gameData.INITIAL_SPAWN_FOOD_VARIANCE, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN + _gameData.INITIAL_SPAWN_FOOD_VARIANCE));
-                SpawnFood(-1f);
-            }
-
             //Spawn in starting Plants
             int startingPlantAmount = (int)Math.Ceiling((((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / ((_herbavoreTexture.Width + _herbavoreTexture.Height) / 2)) * (_gameData.Settings.StartingPlantRatio / 1000000f)));
             for (int i = 0; i < startingPlantAmount; i++)
@@ -333,7 +316,7 @@ namespace EvolutionConquest
 
             //Calculate the food spawn speed
             //_foodGenerationIntervalSeconds = (_gameData.Settings.FoodGenerationValue * 1000f) / (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize);
-            _foodGenerationIntervalSeconds = 12000000 / (_gameData.Settings.FoodGenerationValue * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
+            _foodGenerationIntervalSeconds = 12000000 / ((_gameData.Settings.FoodGenerationValue / 10) * (_gameData.Settings.WorldSize * _gameData.Settings.WorldSize));
             //_foodLifeSpan = 100f + (_gameData.Settings.FoodGenerationValue * 100f);
             _foodLifeSpan = 3125; //Every 500 maintains ~1600 food
             //_foodLifeSpan = (_gameData.Settings.FoodGenerationValue * 1000f);
@@ -418,6 +401,29 @@ namespace EvolutionConquest
             _collisionThreadClass = new CollisionThread(_gameData, _rand);
             _collisionThread = new Thread(new ThreadStart(_collisionThreadClass.Start));
             _collisionThread.Start();
+
+            //Simulate Forest growth
+            BuildForests();
+
+            //Attempt to give starting creatures a better chance of finding food in the beginning to avoid large extinctions to open the game
+            //Load in random food
+            int amountOfFood = (int)(((_gameData.Settings.WorldSize * _gameData.Settings.WorldSize) / _foodTexture.Width) * (_gameData.Settings.StartingFoodRatio / 100000f));
+            //Spawn in fast despawning food
+            for (int i = 0; i < amountOfFood; i++)
+            {
+                SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 10) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 10)));
+            }
+            ////Spawn in medium despawning food
+            //for (int i = 0; i < amountOfFood; i++)
+            //{
+            //    SpawnFood(_rand.Next((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4 - _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4), ((_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN / 4) + _gameData.INITIAL_SPAWN_FOOD_VARIANCE / 4)));
+            //}
+            //Spawn in food that does not despawn
+            for (int i = 0; i < amountOfFood / 2; i++)
+            {
+                //SpawnFood(_rand.Next(_gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN - _gameData.INITIAL_SPAWN_FOOD_VARIANCE, _gameData.INITIAL_SPAWN_FOOD_AVG_LIFESPAN + _gameData.INITIAL_SPAWN_FOOD_VARIANCE));
+                SpawnFood(-1f);
+            }
 
             ////Test creatures
             //SpawnTwoTestCreaturesWithInterceptPaths();
@@ -764,6 +770,13 @@ namespace EvolutionConquest
                 _gameData.ElapsedTimeSinceFitnessCalculation -= GameData.SECONDS_BETWEEN_FITNESS_CALC;
                 _gameData.TotalFitnessPoints += fitnessScore;
                 _gameData.NumberOfFitnessCalculations++;
+            }
+
+            _elapsedTimeSinceNewCreatureSpawned += gameTime.ElapsedGameTime.TotalMinutes;
+            if (_elapsedTimeSinceNewCreatureSpawned >= MINUTES_UNTIL_NEW_CREATURE_SPAWN)
+            {
+                _elapsedTimeSinceNewCreatureSpawned = 0;
+                SpawnStartingCreature();
             }
         }
         private void UpdateOffTickInterval(GameTime gameTime)
@@ -1994,11 +2007,11 @@ namespace EvolutionConquest
         //Helper functions
         private void ResetGame(GameTime gameTime)
         {
-            _resetTimeSpan = gameTime.TotalGameTime;
-            LoadContent();
-
             if (ENABLE_GAME_RESETS)
             {
+                _resetTimeSpan = gameTime.TotalGameTime;
+                LoadContent();
+
                 //Check to see if we calculated a better fitness score compared to the current best
                 if (_gameData.CurrentFitnessScore > _gameData.BestRunSettings.FitnessScore)
                 {
@@ -2092,6 +2105,7 @@ namespace EvolutionConquest
             _elapsedTimeSinceFoodGeneration = 0;
             _elapsedTimeSinceDebugTimeData = 0;
             _elapsedTicksSinceSecondProcessing = 0;
+            _elapsedTimeSinceNewCreatureSpawned = 0;
             _fps = 0;
             _frames = 0;
             _elapsedSeconds = 0.0;
@@ -3530,6 +3544,30 @@ namespace EvolutionConquest
 
             return builtList;
         }
+        private void BuildForests()
+        {
+            int totalTicks = MINUTES_OF_FOREST_GROWTH_ON_START * (TICKS_PER_SECOND * 60);
+
+            _gameData.OpeningForestBuild = true;
+
+            GameTime emptyGT = new GameTime();
+            for (int i = 0; i < totalTicks; i++)
+            {
+                _gameData.TickElapsedPlants = true;
+
+                if (i % 100 == 0)
+                {
+                    UpdateOffTickIntervalObjectCleanup(emptyGT);
+                }
+
+                //Wait for the plant spread thread to return
+                while (_gameData.TickElapsedPlants)
+                {
+                }
+            }
+
+            _gameData.OpeningForestBuild = false;
+        }
         private void SpawnFood()
         {
             //SpawnFood(-1f);
@@ -3691,30 +3729,50 @@ namespace EvolutionConquest
         {
             double score = 0d;
 
-            double carnivorePointsFromPerfect = Math.Abs(10d - _gameData.MapStatistics.PercentCarnivore);
-            double herbavorePointsFromPerfect = Math.Abs(70d - _gameData.MapStatistics.PercentHerbavore);
-            double scavengerPointsFromPerfect = Math.Abs(15d - _gameData.MapStatistics.PercentScavenger);
-            double omnivorePointsFromPerfect = Math.Abs(5d - _gameData.MapStatistics.PercentOmnivore);
-            double creatureCountFromPerfect = Math.Abs(1000d - _gameData.MapStatistics.AliveCreatures);
-
-            if (creatureCountFromPerfect > 100d)
-                creatureCountFromPerfect = 100d;
-
-            if (carnivorePointsFromPerfect > 0)
-                score += 100d - carnivorePointsFromPerfect;
-            if(herbavorePointsFromPerfect > 0)
-                score += 100d - herbavorePointsFromPerfect;
-            if(scavengerPointsFromPerfect > 0)
-                score += 100d - scavengerPointsFromPerfect;
-            if(omnivorePointsFromPerfect > 0)
-                score += 100d - omnivorePointsFromPerfect;
-
-            score += 100d - creatureCountFromPerfect;
-
-            if (_fps < 30)
+            //Herbavore only
+            if (_gameData.MapStatistics.AliveCreatures >= 1000 && _gameData.MapStatistics.AliveCreatures <= 3000)
             {
-                score -= 100;
+                score = 1000d;
             }
+            else if (_gameData.MapStatistics.AliveCreatures < 1000)
+            {
+                score = 1000d - (1000 - _gameData.MapStatistics.AliveCreatures);
+            }
+            else if (_gameData.MapStatistics.AliveCreatures > 3000)
+            {
+                score = 1000d - (_gameData.MapStatistics.AliveCreatures - 3000);
+            }
+
+            if (score < 0)
+                score = 0;
+            else if (score > 100)
+                score = 1000;
+
+            ////Full game check
+            //double carnivorePointsFromPerfect = Math.Abs(10d - _gameData.MapStatistics.PercentCarnivore);
+            //double herbavorePointsFromPerfect = Math.Abs(70d - _gameData.MapStatistics.PercentHerbavore);
+            //double scavengerPointsFromPerfect = Math.Abs(15d - _gameData.MapStatistics.PercentScavenger);
+            //double omnivorePointsFromPerfect = Math.Abs(5d - _gameData.MapStatistics.PercentOmnivore);
+            //double creatureCountFromPerfect = Math.Abs(1000d - _gameData.MapStatistics.AliveCreatures);
+
+            //if (creatureCountFromPerfect > 100d)
+            //    creatureCountFromPerfect = 100d;
+
+            //if (carnivorePointsFromPerfect > 0)
+            //    score += 100d - carnivorePointsFromPerfect;
+            //if(herbavorePointsFromPerfect > 0)
+            //    score += 100d - herbavorePointsFromPerfect;
+            //if(scavengerPointsFromPerfect > 0)
+            //    score += 100d - scavengerPointsFromPerfect;
+            //if(omnivorePointsFromPerfect > 0)
+            //    score += 100d - omnivorePointsFromPerfect;
+
+            //score += 100d - creatureCountFromPerfect;
+
+            //if (_fps < 30)
+            //{
+            //    score -= 100;
+            //}
 
             return score;
         }

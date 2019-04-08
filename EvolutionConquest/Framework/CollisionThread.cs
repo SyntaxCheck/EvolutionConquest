@@ -77,20 +77,23 @@ public class CollisionThread
                                     //lock (_gameData.LockCreatures) { }
                                     for (int k = (_gameData.MapGridData[p.X, p.Y].Plants.Count - 1); k >= 0; k--)
                                     {
-                                        if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)
+                                        if (_gameData.MapGridData[p.X, p.Y].Plants[k].FoodAmount >= 1) //We always deplete 1 full food level
                                         {
-                                            if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Plants[k].Bounds))
+                                            if (_gameData.Creatures[i].Herbavore >= _gameData.MapGridData[p.X, p.Y].Plants[k].FoodStrength)
                                             {
-                                                //Make sure the creature is not on cooldown before attempting to eat from the food
-                                                if (_gameData.MapGridData[p.X, p.Y].Plants[k].Interactions.Count(t => t.CreatureID == _gameData.Creatures[i].CreatureId) <= 0)
+                                                if (_gameData.Creatures[i].Bounds.Intersects(_gameData.MapGridData[p.X, p.Y].Plants[k].Bounds))
                                                 {
-                                                    float foodAwarded = _gameData.MapGridData[p.X, p.Y].Plants[k].Eat(_gameData.Creatures[i].CreatureId);
-
-                                                    if (foodAwarded > 0)
+                                                    //Make sure the creature is not on cooldown before attempting to eat from the food
+                                                    if (_gameData.MapGridData[p.X, p.Y].Plants[k].Interactions.Count(t => t.CreatureID == _gameData.Creatures[i].CreatureId) <= 0)
                                                     {
-                                                        _gameData.Creatures[i].UndigestedFood += foodAwarded;
-                                                        _gameData.Creatures[i].TotalFoodEaten++;
-                                                        _gameData.Creatures[i].Energy += ((_gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10)) * foodAwarded) * 1.1f; //Slower food digestion means you pull more energy from the food
+                                                        float foodAwarded = _gameData.MapGridData[p.X, p.Y].Plants[k].Eat(_gameData.Creatures[i].CreatureId);
+
+                                                        if (foodAwarded > 0)
+                                                        {
+                                                            _gameData.Creatures[i].UndigestedFood += foodAwarded;
+                                                            _gameData.Creatures[i].TotalFoodEaten++;
+                                                            _gameData.Creatures[i].Energy += ((_gameData.Settings.EnergyGivenFromFood + (_gameData.Creatures[i].FoodDigestion / 10)) * foodAwarded) * 1.1f; //Slower food digestion means you pull more energy from the food
+                                                        }
                                                     }
                                                 }
                                             }

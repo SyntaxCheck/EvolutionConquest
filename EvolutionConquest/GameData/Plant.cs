@@ -9,9 +9,11 @@ public class Plant : SpriteBase
 {
     private const int PLANT_SPREAD_RADIUS_MIN = 3;
     private const int PLANT_SPREAD_RADIUS_MAX = 10;
+
     private int[] RotationVals = { 0, 90, 180, 270 };
     private bool _markForDelete;
     private bool _superTree;
+    private bool _disableGrowOnEatInterval;
     private float _lifespan;
     private int _eatCooldownTicks;
     private int _spreadCooldownTicks;
@@ -168,7 +170,7 @@ public class Plant : SpriteBase
         if (FoodAmount > 0)
         {
             TotalTimesEatenFrom++;
-            FoodAmount -= (FoodAmountGivenOnEat * 4); //We only give 0.25 on eat initially so multiple by 4 to maintain initial tree depletion rate
+            FoodAmount -= 1; //Deplete by 1 even though we dont award a full point
             if (FoodAmount < 0)
                 FoodAmount = 0;
         }
@@ -187,15 +189,16 @@ public class Plant : SpriteBase
         FoodAmount = 5;
         FoodAmountCap = rand.Next(100, 500);
         FoodAmountGivenOnGrow = rand.Next(1, 3);
-        FoodAmountGivenOnEat = 0.25f;
-        FoodStrength = 10;
+        FoodAmountGivenOnEat = 0.05f;
+        FoodStrength = 0;
         EatCooldownTicks = rand.Next(100, 200);
         NumberOfSaplings = rand.Next(0, 2);
-        SpreadCooldownTicks = rand.Next(2000, 2200);
-        //SpreadCooldownTicks = rand.Next(1600, 1600);
+        //SpreadCooldownTicks = rand.Next(2000, 2200);
+        SpreadCooldownTicks = rand.Next(1600, 1600);
         GrowCooldownTicks = rand.Next(350, 450);
         GrowDelayOnEatTicks = rand.Next(50, 60);
         FoodType = 0; //NOT IMPLEMENTED
+        _disableGrowOnEatInterval = gameData.DISABLE_GROW_ON_EAT_INTERVAL;
         Rotation = (float)(Math.PI / 180) * RotationVals[rand.Next(0, 4)];
         PlantSpreadNorthCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
         PlantSpreadSouthCheckRadius = rand.Next(PLANT_SPREAD_RADIUS_MIN, PLANT_SPREAD_RADIUS_MAX);
@@ -228,7 +231,7 @@ public class Plant : SpriteBase
             TicksSinceLastEaten = 0;
         }
 
-        if (TicksSinceLastGrow >= GrowCooldownTicksActual && TicksSinceLastEaten >= GrowDelayOnEatTicksActual)
+        if (TicksSinceLastGrow >= GrowCooldownTicksActual && (_disableGrowOnEatInterval || TicksSinceLastEaten >= GrowDelayOnEatTicksActual))
         {
             TicksSinceLastGrow = 0;
             FoodAmount += FoodAmountGivenOnGrow;
@@ -259,7 +262,7 @@ public class Plant : SpriteBase
         babyPlant.FoodAmount = 0;
         babyPlant.FoodAmountCap = FoodAmountCap + Mutate(rand, FoodAmountCap, 2);
         babyPlant.FoodAmountGivenOnGrow = FoodAmountGivenOnGrow + Mutate(rand, FoodAmountGivenOnGrow, 0.5f);
-        babyPlant.FoodAmountGivenOnEat = FoodAmountGivenOnEat + Mutate(rand, FoodAmountGivenOnEat, 0.1f);
+        babyPlant.FoodAmountGivenOnEat = FoodAmountGivenOnEat + Mutate(rand, FoodAmountGivenOnEat, 0.05f);
         babyPlant.FoodStrength = FoodStrength;
         babyPlant.EatCooldownTicks = EatCooldownTicks + (int)Math.Round(Mutate(rand, EatCooldownTicks, 10f), 0);
         babyPlant.SpreadCooldownTicks = SpreadCooldownTicks + (int)Math.Round(Mutate(rand, SpreadCooldownTicks, 10f), 0);

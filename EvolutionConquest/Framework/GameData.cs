@@ -13,6 +13,7 @@ public class GameData
     public int INITIAL_SPAWN_FOOD_VARIANCE = 1286;
     public int CARCASS_LIFESPAN = 357;
     public int MAX_UNDIGESTED_FOOD = 4;
+    public bool DISABLE_GROW_ON_EAT_INTERVAL = true;
 
     private int nextSpeciesId;
     private int topSpeciesId; //ID for the species with the most creatures
@@ -58,6 +59,7 @@ public class GameData
         }
     }
     public bool ResetGame { get; set; }
+    public bool OpeningForestBuild { get; set; }
     public bool BuildSettingsPanel { get; set; }
     public bool ShowChart { get; set; }
     public bool ShowControls { get; set; }
@@ -113,6 +115,7 @@ public class GameData
         nextSpeciesId = 0;
         ShowChart = true;
         ShowControls = true;
+        OpeningForestBuild = false;
         HighlightSpecies = false;
         HerbavoreMarkers = false;
         CarnivoreMarkers = false;
