@@ -493,34 +493,46 @@ namespace EvolutionConquest
                     _gameData.BuildSettingsPanel = false;
                 }
 
-                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER && 
-                    (!ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH || _gameData.Creatures.Where(t => t.IsAlive).Count() > 0) &&
-                    (!ENABLE_GAME_RESETS_ON_TOO_MANY_CREATURES || _gameData.Creatures.Where(t => t.IsAlive).Count() < MAX_CREATURES))
+                if ((gameTime.TotalGameTime - _resetTimeSpan).TotalMinutes < MINUTES_TILL_GAMEOVER)
                 {
-                    _tickSeconds = 1f / TICKS_PER_SECOND;
+                    if ((!ENABLE_GAME_RESETS_ON_ALL_CREATURE_DEATH || _gameData.Creatures.Where(t => t.IsAlive).Count() > 0) &&
+                        (!ENABLE_GAME_RESETS_ON_TOO_MANY_CREATURES || _gameData.Creatures.Where(t => t.IsAlive).Count() < MAX_CREATURES))
+                    {
 
-                    _elapsedSecondsSinceTick += gameTime.ElapsedGameTime.TotalSeconds;
-                    _elapsedSecondsSinceOffTick += gameTime.ElapsedGameTime.TotalSeconds;
-                    _elapsedTimeSinceFoodGeneration += gameTime.ElapsedGameTime.TotalSeconds;
-                    if (_elapsedSecondsSinceTick > _tickSeconds)
-                    {
-                        _elapsedSecondsSinceTick = _elapsedSecondsSinceTick - _tickSeconds; //Start the next tick with the overage
-                        tick = true;
-                    }
+                        _tickSeconds = 1f / TICKS_PER_SECOND;
 
-                    //During a tick do all creature processing and force offtick processing atleast once every 5 seconds
-                    if (tick && _elapsedSecondsSinceOffTick < 5.0)
-                    {
-                        debugDttm = DateTime.Now;
-                        UpdateTick(gameTime);
-                        _debugTimer.TimeUpdateTick += (DateTime.Now - debugDttm).TotalMilliseconds;
+                        _elapsedSecondsSinceTick += gameTime.ElapsedGameTime.TotalSeconds;
+                        _elapsedSecondsSinceOffTick += gameTime.ElapsedGameTime.TotalSeconds;
+                        _elapsedTimeSinceFoodGeneration += gameTime.ElapsedGameTime.TotalSeconds;
+                        if (_elapsedSecondsSinceTick > _tickSeconds)
+                        {
+                            _elapsedSecondsSinceTick = _elapsedSecondsSinceTick - _tickSeconds; //Start the next tick with the overage
+                            tick = true;
+                        }
+
+                        //During a tick do all creature processing and force offtick processing atleast once every 5 seconds
+                        if (tick && _elapsedSecondsSinceOffTick < 5.0)
+                        {
+                            debugDttm = DateTime.Now;
+                            UpdateTick(gameTime);
+                            _debugTimer.TimeUpdateTick += (DateTime.Now - debugDttm).TotalMilliseconds;
+                        }
+                        else //Off tick processing
+                        {
+                            _elapsedSecondsSinceOffTick = 0;
+                            debugDttm = DateTime.Now;
+                            UpdateOffTick(gameTime);
+                            _debugTimer.TimeUpdateOffTick += (DateTime.Now - debugDttm).TotalMilliseconds;
+                        }
                     }
-                    else //Off tick processing
+                    else
                     {
-                        _elapsedSecondsSinceOffTick = 0;
-                        debugDttm = DateTime.Now;
-                        UpdateOffTick(gameTime);
-                        _debugTimer.TimeUpdateOffTick += (DateTime.Now - debugDttm).TotalMilliseconds;
+                        //Game ended early, write a large negative fitness score
+                        _gameData.TotalFitnessPoints += -9999999999;
+                        _gameData.NumberOfFitnessCalculations = 1;
+
+                        //Simulation has ended. Time to write stats to the database
+                        UpdateHandleEndOfSimulation(gameTime);
                     }
                 }
                 else
@@ -3764,27 +3776,27 @@ namespace EvolutionConquest
         }
         private double CalculateFitness()
         {
-            double maxScore = 1000d;
+            double maxScore = 10000d;
             double score = 0d;
 
             //Herbavore only
             if (_gameData.MapStatistics.AliveCreatures >= 1000 && _gameData.MapStatistics.AliveCreatures <= 3000)
             {
-                score = maxScore;
+                score = maxScore * 2;
             }
             else if (_gameData.MapStatistics.AliveCreatures < 1000)
             {
-                score = maxScore - (1000 - _gameData.MapStatistics.AliveCreatures);
+                score = maxScore - ((1000 - _gameData.MapStatistics.AliveCreatures) * 10);
             }
             else if (_gameData.MapStatistics.AliveCreatures > 3000)
             {
-                score = maxScore - (_gameData.MapStatistics.AliveCreatures - 3000);
+                score = maxScore - ((_gameData.MapStatistics.AliveCreatures - 3000) * 10);
             }
 
-            if (score < 0)
-                score = 0;
-            else if (score > maxScore)
-                score = 1000;
+            if (score < (maxScore * -1))
+            {
+                score = (maxScore * -1);
+            }
 
             ////Full game check
             //double carnivorePointsFromPerfect = Math.Abs(10d - _gameData.MapStatistics.PercentCarnivore);
