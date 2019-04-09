@@ -1215,7 +1215,7 @@ namespace EvolutionConquest
                     System.IO.Directory.CreateDirectory(_sessionID.ToString());
 
                 //Write Settings
-                List<string> csvSettings = BuildStringListFromClass(_gameData.Settings, _gameData.CreatureSettings, _gameData.MutationSettings);
+                List<string> csvSettings = BuildStringListFromClassVertical("Setting,Value", _gameData.Settings, _gameData.CreatureSettings, _gameData.MutationSettings);
                 System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "Settings.csv"), csvSettings.ToArray());
                 csvSettings = null; //Let GC cleanup the RAM before we build the next list
 
@@ -2041,7 +2041,10 @@ namespace EvolutionConquest
                 if (_gameData.CurrentFitnessScore > _gameData.BestRunSettings.FitnessScore)
                 {
                     _gameData.SetNewBestRun();
+                    System.IO.File.Create(System.IO.Path.Combine(_sessionID.ToString(), "_IsBestRunSoFar.true"));
                 }
+
+                WriteBestRun();
 
                 //Reset all the values back to the current best run values before randomizing
                 _gameData.Settings = _gameData.BestRunSettings.Settings;
@@ -3514,6 +3517,55 @@ namespace EvolutionConquest
 
             return builtList;
         }
+        private List<string> BuildStringListFromClassVertical(string headers, object obj1, object obj2, object obj3)
+        {
+            List<string> builtList = new List<string>();
+            string csvRow = String.Empty;
+            string className = String.Empty;
+
+            builtList.Add(headers);
+            if (obj1 != null)
+            {
+                className = obj1.GetType().Name;
+                PropertyInfo[] pi1 = obj1.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi1)
+                {
+                    csvRow = className + "_" + p.Name + ",";
+                    csvRow += p.GetValue(obj1, null).ToString();
+
+                    builtList.Add(csvRow);
+                }
+            }
+            if (obj2 != null)
+            {
+                className = obj2.GetType().Name;
+                PropertyInfo[] pi2 = obj2.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi2)
+                {
+                    csvRow = className + "_" + p.Name + ",";
+                    csvRow += p.GetValue(obj2, null).ToString();
+
+                    builtList.Add(csvRow);
+                }
+            }
+            if (obj3 != null)
+            {
+                className = obj3.GetType().Name;
+                PropertyInfo[] pi3 = obj3.GetType().GetProperties();
+
+                foreach (PropertyInfo p in pi3)
+                {
+                    csvRow = className + "_" + p.Name + ",";
+                    csvRow += p.GetValue(obj3, null).ToString();
+
+                    builtList.Add(csvRow);
+                }
+            }
+
+            return builtList;
+        }
         private List<string> BuildFitnessFile()
         {
             List<string> builtList = new List<string>();
@@ -3825,6 +3877,18 @@ namespace EvolutionConquest
             //}
 
             return score;
+        }
+        private void WriteBestRun()
+        {
+            //Write Debug file
+            List<string> csvBestRun = BuildStringListFromClassVertical("", _gameData.BestRunSettings.Settings, _gameData.BestRunSettings.CreatureSettings, _gameData.BestRunSettings.MutationSettings);
+            csvBestRun.Add("MAX_UNDIGESTED_FOOD," + _gameData.BestRunSettings.MAX_UNDIGESTED_FOOD);
+            csvBestRun.Add("CARCASS_LIFESPAN," + _gameData.BestRunSettings.CARCASS_LIFESPAN);
+            csvBestRun.Add("INITIAL_SPAWN_FOOD_AVG_LIFESPAN," + _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_AVG_LIFESPAN);
+            csvBestRun.Add("INITIAL_SPAWN_FOOD_VARIANCE," + _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_VARIANCE);
+
+            System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "BestRunSettings.csv"), csvBestRun.ToArray());
+            csvBestRun = null; //Let GC cleanup the RAM before we build the next list
         }
 
         //Debug Creature spawns
