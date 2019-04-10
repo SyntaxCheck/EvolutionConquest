@@ -17,6 +17,7 @@ public class BestRunSettingsContainer
 
     public BestRunSettingsContainer()
     {
-        FitnessScore = 0;
+        //Init this to a low value so that the first run the finishes with a somewhat decent score is the new baseline
+        FitnessScore = -9999;
     }
 }

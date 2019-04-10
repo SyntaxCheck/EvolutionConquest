@@ -3887,7 +3887,7 @@ namespace EvolutionConquest
             csvBestRun.Add("INITIAL_SPAWN_FOOD_AVG_LIFESPAN," + _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_AVG_LIFESPAN);
             csvBestRun.Add("INITIAL_SPAWN_FOOD_VARIANCE," + _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_VARIANCE);
 
-            System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "BestRunSettings.csv"), csvBestRun.ToArray());
+            System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "BestRunSettings " + _gameData.BestRunSettings.FitnessScore.ToString() + ".csv"), csvBestRun.ToArray());
             csvBestRun = null; //Let GC cleanup the RAM before we build the next list
         }
 
