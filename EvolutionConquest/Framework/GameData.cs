@@ -93,6 +93,9 @@ public class GameData
     {
         get
         {
+            if (NumberOfFitnessCalculations == 0)
+                return -99999;
+
             return Math.Round(TotalFitnessPoints / NumberOfFitnessCalculations, 2);
         }
     }

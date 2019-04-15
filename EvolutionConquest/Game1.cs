@@ -169,15 +169,26 @@ namespace EvolutionConquest
                 Thread.Sleep(500); //Give the threads some time to shutdown since the threads have Sleeps built in
             }
 
+            //Save best run
+            BestRunSettingsContainer bestRunSettingsContainer = new BestRunSettingsContainer();
+            bool isFirstRun = true;
+            if (_gameData != null)
+            {
+                bestRunSettingsContainer = _gameData.BestRunSettings;
+                isFirstRun = false;
+            }
+
             //Load settings at the beginning
             _gameData = new GameData();
+            _gameData.BestRunSettings = bestRunSettingsContainer;
             _gameData.GraphicsDevice = _graphics.GraphicsDevice;
             _gameData.Settings = SettingsHelper.ReadSettings("Settings.json");
             _gameData.CreatureSettings = SettingsHelper.ReadCreatureSettings("CreatureSettings.json");
             _gameData.MutationSettings = SettingsHelper.ReadMutationSettings("MutationSettings.json");
             _gameData.MaxCreatureUndigestedFood = _gameData.MAX_UNDIGESTED_FOOD;
             _gameData.TicksPerSecond = (int)TICKS_PER_SECOND;
-            _gameData.SetNewBestRun(); //Initialize the best run settings
+            if(isFirstRun)
+                _gameData.SetNewBestRun(); //Initialize the best run settings
 
             // Create a new SpriteBatch, which can be used to draw textures.
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -1216,7 +1227,7 @@ namespace EvolutionConquest
 
                 //Write Settings
                 List<string> csvSettings = BuildStringListFromClassVertical("Setting,Value", _gameData.Settings, _gameData.CreatureSettings, _gameData.MutationSettings);
-                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "Settings.csv"), csvSettings.ToArray());
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(_sessionID.ToString(), "Settings " + _gameData.CurrentFitnessScore.ToString() + ".csv"), csvSettings.ToArray());
                 csvSettings = null; //Let GC cleanup the RAM before we build the next list
 
                 //Alive creatures
@@ -2034,9 +2045,6 @@ namespace EvolutionConquest
         {
             if (ENABLE_GAME_RESETS)
             {
-                _resetTimeSpan = gameTime.TotalGameTime;
-                LoadContent();
-
                 //Check to see if we calculated a better fitness score compared to the current best
                 if (_gameData.CurrentFitnessScore > _gameData.BestRunSettings.FitnessScore)
                 {
@@ -2045,6 +2053,9 @@ namespace EvolutionConquest
                 }
 
                 WriteBestRun();
+
+                _resetTimeSpan = gameTime.TotalGameTime;
+                LoadContent();
 
                 //Reset all the values back to the current best run values before randomizing
                 _gameData.Settings = _gameData.BestRunSettings.Settings;
@@ -2055,8 +2066,8 @@ namespace EvolutionConquest
                 _gameData.INITIAL_SPAWN_FOOD_VARIANCE = _gameData.BestRunSettings.INITIAL_SPAWN_FOOD_VARIANCE;
                 _gameData.MAX_UNDIGESTED_FOOD = _gameData.BestRunSettings.MAX_UNDIGESTED_FOOD;
 
-                float lowEndVal = 0.1f;
-                float highEndVal = 2f;
+                float lowEndVal = 0.75f;
+                float highEndVal = 1.25f;
 
                 //Randomize the settings file
                 _gameData.Settings.FoodGenerationValue = _rand.Next((int)(_gameData.Settings.FoodGenerationValue * lowEndVal), (int)(_gameData.Settings.FoodGenerationValue * highEndVal));
@@ -3828,21 +3839,21 @@ namespace EvolutionConquest
         }
         private double CalculateFitness()
         {
-            double maxScore = 10000d;
+            double maxScore = 15000d;
             double score = 0d;
 
             //Herbavore only
             if (_gameData.MapStatistics.AliveCreatures >= 1000 && _gameData.MapStatistics.AliveCreatures <= 3000)
             {
-                score = maxScore * 2;
+                score = maxScore * 2f;
             }
-            else if (_gameData.MapStatistics.AliveCreatures < 1000)
+            else if (_gameData.MapStatistics.AliveCreatures < 1250)
             {
-                score = maxScore - ((1000 - _gameData.MapStatistics.AliveCreatures) * 10);
+                score = maxScore - ((1250 - _gameData.MapStatistics.AliveCreatures) * 15);
             }
             else if (_gameData.MapStatistics.AliveCreatures > 3000)
             {
-                score = maxScore - ((_gameData.MapStatistics.AliveCreatures - 3000) * 10);
+                score = maxScore - ((_gameData.MapStatistics.AliveCreatures - 3000) * 15);
             }
 
             if (score < (maxScore * -1))
