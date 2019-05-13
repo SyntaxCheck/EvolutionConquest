@@ -225,46 +225,21 @@ public class SpriteBase
 
         return delta;
     }
-    public void GetGridPositionsForSpriteBase(int gridCellSize, GameData _gameData)
+    public void GetGridPositionsForSpriteBase(int gridCellSize, GameData gameData)
     {
         List<Point> gridPositions = new List<Point>();
 
-        //Find the exact grid position we are in then check the surrounding grid locations
-        Point exactGridPos = CalculateGridPosition(gridCellSize);
-        gridPositions.Add(exactGridPos);
+        //Find the top left grid position and the bottom right grid position
+        Point topLeft = new Point((int)Math.Floor(Bounds.X / (double)gameData.MapGridData[0,0].CellRectangle.Width), (int)Math.Floor(Bounds.Y / (double)gameData.MapGridData[0, 0].CellRectangle.Width));
+        Point bottomRight = new Point((int)Math.Floor((Bounds.X + Bounds.Width) / (double)gameData.MapGridData[0, 0].CellRectangle.Width), (int)Math.Floor((Bounds.Y + Bounds.Height) / (double)gameData.MapGridData[0, 0].CellRectangle.Width));
 
-        if (exactGridPos.X > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y].CellRectangle))
+        for (int y = topLeft.Y; y <= bottomRight.Y; y++)
         {
-            gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y));
-            if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y - 1].CellRectangle))
+            for (int x = topLeft.X; x <= bottomRight.X; x++)
             {
-                gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y - 1));
+                if (x >= 0 && x < gameData.MapGridData.GetLength(0) && y >= 0 && y < gameData.MapGridData.GetLength(1))
+                    gridPositions.Add(new Point(x, y));
             }
-            else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X - 1, exactGridPos.Y + 1].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X - 1, exactGridPos.Y + 1));
-            }
-        }
-        else if (exactGridPos.X < _gameData.MapGridData.GetLength(0) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y].CellRectangle))
-        {
-            gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y));
-            if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y - 1].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y - 1));
-            }
-            else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X + 1, exactGridPos.Y + 1].CellRectangle))
-            {
-                gridPositions.Add(new Point(exactGridPos.X + 1, exactGridPos.Y + 1));
-            }
-        }
-
-        if (exactGridPos.Y > 0 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y - 1].CellRectangle))
-        {
-            gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y - 1));
-        }
-        else if (exactGridPos.Y < _gameData.MapGridData.GetLength(1) - 1 && Bounds.Intersects(_gameData.MapGridData[exactGridPos.X, exactGridPos.Y + 1].CellRectangle))
-        {
-            gridPositions.Add(new Point(exactGridPos.X, exactGridPos.Y + 1));
         }
 
         //Move the Current Grid position string to the Old
